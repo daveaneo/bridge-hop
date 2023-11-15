@@ -18,6 +18,14 @@ const config: HardhatUserConfig = {
     hardhat: {
       chainId: 31337
     },
+    polygonMumbai: {
+      url: POLYGON_MUMBAI_RPC_URL !== undefined ? POLYGON_MUMBAI_RPC_URL : '',
+      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
+      chainId: 80001
+    },
+
+
+
     ethereumSepolia: {
       url: ETHEREUM_SEPOLIA_RPC_URL !== undefined ? ETHEREUM_SEPOLIA_RPC_URL : '',
       accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
@@ -42,7 +50,16 @@ const config: HardhatUserConfig = {
       url: AVALANCHE_FUJI_RPC_URL !== undefined ? AVALANCHE_FUJI_RPC_URL : '',
       accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
       chainId: 43113
-    }
+    },
+
+
+    /// MAIN NETS
+    polygon: {
+      url: "https://polygon-rpc.com",
+      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
+      chainId: 137
+    },
+
   },
   typechain: {
     externalArtifacts: ['./abi/*.json']

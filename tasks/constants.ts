@@ -15,6 +15,7 @@ export const supportedNetworks = [
     `arbitrumTestnet`,
     `avalancheFuji`,
     `polygonMumbai`,
+    "polygon",
 ];
 
 export const LINK_ADDRESSES: AddressMap = {
@@ -22,7 +23,10 @@ export const LINK_ADDRESSES: AddressMap = {
     [`polygonMumbai`]: `0x326C977E6efc84E512bB9C30f76E30c160eD06FB`,
     [`optimismGoerli`]: `0xdc2CC710e42857672E7907CF474a69B63B93089f`,
     [`arbitrumTestnet`]: `0xd14838A68E8AFBAdE5efb411d5871ea0011AFd28`,
-    [`avalancheFuji`]: `0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846`
+    [`avalancheFuji`]: `0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846`,
+    [`polygon`]: `0xb0897686c545045aFc77CF20eC7A532E3120E0F1`,
+
+
 };
 
 export const CCIP_BnM_ADDRESSES: AddressMap = {
@@ -30,7 +34,8 @@ export const CCIP_BnM_ADDRESSES: AddressMap = {
     [`polygonMumbai`]: `0xf1E3A5842EeEF51F2967b3F05D45DD4f4205FF40`,
     [`optimismGoerli`]: `0xaBfE9D11A2f1D61990D1d253EC98B5Da00304F16`,
     [`arbitrumTestnet`]: `0x0579b4c1C8AcbfF13c6253f1B10d66896Bf399Ef`,
-    [`avalancheFuji`]: `0xD21341536c5cF5EB1bcb58f6723cE26e8D8E90e4`
+    [`avalancheFuji`]: `0xD21341536c5cF5EB1bcb58f6723cE26e8D8E90e4`,
+    [`polygon`]: ``,
 }
 
 export const CCIP_LnM_ADDRESSES: AddressMap = {
@@ -38,7 +43,8 @@ export const CCIP_LnM_ADDRESSES: AddressMap = {
     [`polygonMumbai`]: `0xc1c76a8c5bFDE1Be034bbcD930c668726E7C1987`,
     [`optimismGoerli`]: `0x835833d556299CdEC623e7980e7369145b037591`,
     [`arbitrumTestnet`]: `0x0E14dBe2c8e1121902208be173A3fb91Bb125CDB`,
-    [`avalancheFuji`]: `0x70F5c5C40b873EA597776DA2C21929A8282A3b35`
+    [`avalancheFuji`]: `0x70F5c5C40b873EA597776DA2C21929A8282A3b35`,
+    [`polygon`]: ``,
 }
 
 export const routerConfig = {
@@ -66,5 +72,10 @@ export const routerConfig = {
         address: `0x70499c328e1e2a3c41108bd3730f6670a44595d1`,
         chainSelector: `12532609583862916517`,
         feeTokens: [LINK_ADDRESSES[`polygonMumbai`], `0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889`]
+    },
+    polygon: {
+        address: `0x3C3D92629A02a8D95D5CB9650fe49C3544f69B43`,
+        chainSelector: `4051577828743386545`,
+        feeTokens: [LINK_ADDRESSES[`polygon`], `0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270`]
     }
 }

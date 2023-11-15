@@ -10,17 +10,23 @@ task(`deploy-basic-message-sender`, `Deploys the BasicMessageSender smart contra
     .addOptionalParam(`router`, `The address of the Router contract`)
     .addOptionalParam(`link`, `The address of the LINK token`)
     .setAction(async (taskArguments: TaskArguments, hre: HardhatRuntimeEnvironment) => {
+        console.log("A0-------");
         const routerAddress = taskArguments.router ? taskArguments.router : getRouterConfig(hre.network.name).address;
+        console.log("A1-------");
         const linkAddress = taskArguments.link ? taskArguments.link : LINK_ADDRESSES[hre.network.name]
+        console.log("A2-------");
 
         const privateKey = getPrivateKey();
         const rpcProviderUrl = getProviderRpcUrl(hre.network.name);
 
+
+        console.log("HELLO")
         const provider = new providers.JsonRpcProvider(rpcProviderUrl);
         const wallet = new Wallet(privateKey);
         const deployer = wallet.connect(provider);
 
         const spinner: Spinner = new Spinner();
+        console.log("B-------");
 
         console.log(`ℹ️  Attempting to deploy BasicMessageSender on the ${hre.network.name} blockchain using ${deployer.address} address, with the Router address ${routerAddress} and LINK address ${linkAddress} provided as constructor arguments`);
         spinner.start();

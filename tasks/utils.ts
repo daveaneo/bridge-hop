@@ -19,6 +19,9 @@ export const getProviderRpcUrl = (network: string) => {
         case "polygonMumbai":
             rpcUrl = process.env.POLYGON_MUMBAI_RPC_URL;
             break;
+        case "polygon":
+            rpcUrl = process.env.POLYGON_MUMBAI_RPC_URL;
+            break;
         default:
             throw new Error("Unknown network: " + network);
     }
@@ -55,6 +58,8 @@ export const getRouterConfig = (network: string) => {
             return routerConfig.avalancheFuji;
         case "polygonMumbai":
             return routerConfig.polygonMumbai;
+        case "polygon":
+            return routerConfig.polygon;
         default:
             throw new Error("Unknown network: " + network);
     }
