@@ -1,6 +1,6 @@
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment, TaskArguments } from "hardhat/types";
-import { getPrivateKey, getProviderRpcUrl, getRouterConfig } from "./utils";
+import { getPrivateKey, getProviderRpcUrl, getRouterConfig, verifyContract } from "./utils";
 import { Wallet, providers } from "ethers";
 import { Spinner } from "../utils/spinner";
 import { LINK_ADDRESSES } from "./constants";
@@ -37,4 +37,15 @@ task(`deploy-basic-message-sender`, `Deploys the BasicMessageSender smart contra
 
         spinner.stop();
         console.log(`✅ BasicMessageSender deployed at address ${basicMessageSender.address} on ${hre.network.name} blockchain`)
-    });
+
+        console.log("verifing...")
+        spinner.start();
+
+
+        // todo sleep for several confirmations
+        await basicMessageSender.deployed(5); // not sure if that works
+
+        await verifyContract(basicMessageSender.address, "contracts/BasicMessageSender.sol:BasicMessageSender", [routerAddress, linkAddress]);
+        spinner.stop();
+        console.log("Verified.")
+});

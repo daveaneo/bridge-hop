@@ -14,6 +14,27 @@ const AVALANCHE_FUJI_RPC_URL = process.env.AVALANCHE_FUJI_RPC_URL;
 
 const config: HardhatUserConfig = {
   solidity: '0.8.19',
+    etherscan: {
+//     apiKey: process.env.ETHERSCAN_API,
+      apiKey: {
+        ethereum: process.env.ETHERSCAN_API,
+        polygon: process.env.POLYGONSCAN_API,
+        polygonMumbai: process.env.POLYGONSCAN_API,
+      },
+    customChains: [
+     {
+       network: "base-goerli",
+       chainId: 84531,
+       urls: {
+        apiURL: "https://api-goerli.basescan.org/api",
+        browserURL: "https://goerli.basescan.org"
+       }
+     }
+    ]
+    },
+
+
+
   networks: {
     hardhat: {
       chainId: 31337

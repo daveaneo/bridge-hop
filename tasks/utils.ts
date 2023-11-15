@@ -93,3 +93,26 @@ export const getPayFeesIn = (payFeesIn: string) => {
 export const getFaucetTokensAddresses = (network: string) => {
     return { ccipBnM: CCIP_BnM_ADDRESSES[network], ccipLnM: CCIP_LnM_ADDRESSES[network] };
 }
+
+export const verifyContract = async (contractAddress: string, contractNameWithPath: string, constructorArgs: array) => {
+  const hre = await import("hardhat");
+  try {
+    const networkId = await hre.network.provider.send("eth_chainId");
+    const localNetworkId = "0x7a69"; // hardhat local
+
+    // If on Hardhat's local network, simply return
+    if (networkId === localNetworkId) {
+      return;
+    }
+
+    // Run the Hardhat task for contract verification
+    await hre.run("verify:verify", {
+      address: contractAddress,
+      contract: contractNameWithPath,  // specify the contract name here
+      constructorArguments: constructorArgs,
+    });
+
+  } catch (error) {
+    console.error(`Error verifying ${contractNameWithPath}:`, error);
+  }
+}
