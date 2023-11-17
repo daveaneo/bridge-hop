@@ -16,6 +16,7 @@ export const supportedNetworks = [
     `avalancheFuji`,
     `polygonMumbai`,
     "polygon",
+    "hardhat",
 ];
 
 export const LINK_ADDRESSES: AddressMap = {
@@ -25,8 +26,7 @@ export const LINK_ADDRESSES: AddressMap = {
     [`arbitrumTestnet`]: `0xd14838A68E8AFBAdE5efb411d5871ea0011AFd28`,
     [`avalancheFuji`]: `0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846`,
     [`polygon`]: `0xb0897686c545045aFc77CF20eC7A532E3120E0F1`,
-
-
+    [`hardhat`]: `0xb0897686c545045aFc77CF20eC7A532E3120E0F1`,
 };
 
 export const CCIP_BnM_ADDRESSES: AddressMap = {
@@ -36,6 +36,7 @@ export const CCIP_BnM_ADDRESSES: AddressMap = {
     [`arbitrumTestnet`]: `0x0579b4c1C8AcbfF13c6253f1B10d66896Bf399Ef`,
     [`avalancheFuji`]: `0xD21341536c5cF5EB1bcb58f6723cE26e8D8E90e4`,
     [`polygon`]: ``,
+    [`hardhat`]: ``,
 }
 
 export const CCIP_LnM_ADDRESSES: AddressMap = {
@@ -45,6 +46,7 @@ export const CCIP_LnM_ADDRESSES: AddressMap = {
     [`arbitrumTestnet`]: `0x0E14dBe2c8e1121902208be173A3fb91Bb125CDB`,
     [`avalancheFuji`]: `0x70F5c5C40b873EA597776DA2C21929A8282A3b35`,
     [`polygon`]: ``,
+    [`hardhat`]: ``,
 }
 
 export const routerConfig = {
@@ -74,6 +76,11 @@ export const routerConfig = {
         feeTokens: [LINK_ADDRESSES[`polygonMumbai`], `0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889`]
     },
     polygon: {
+        address: `0x3C3D92629A02a8D95D5CB9650fe49C3544f69B43`,
+        chainSelector: `4051577828743386545`,
+        feeTokens: [LINK_ADDRESSES[`polygon`], `0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270`]
+    },
+    hardhat: {
         address: `0x3C3D92629A02a8D95D5CB9650fe49C3544f69B43`,
         chainSelector: `4051577828743386545`,
         feeTokens: [LINK_ADDRESSES[`polygon`], `0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270`]

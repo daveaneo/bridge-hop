@@ -22,6 +22,9 @@ export const getProviderRpcUrl = (network: string) => {
         case "polygon":
             rpcUrl = process.env.POLYGON_MUMBAI_RPC_URL;
             break;
+        case "hardhat":
+            rpcUrl = process.env.POLYGON_MUMBAI_RPC_URL; // anything
+            break;
         default:
             throw new Error("Unknown network: " + network);
     }
@@ -60,6 +63,8 @@ export const getRouterConfig = (network: string) => {
             return routerConfig.polygonMumbai;
         case "polygon":
             return routerConfig.polygon;
+        case "hardhat":
+            return routerConfig.hardhat;
         default:
             throw new Error("Unknown network: " + network);
     }
@@ -96,6 +101,7 @@ export const getFaucetTokensAddresses = (network: string) => {
 
 export const verifyContract = async (contractAddress: string, contractNameWithPath: string, constructorArgs: array) => {
   const hre = await import("hardhat");
+  let errorCode =0;
   try {
     const networkId = await hre.network.provider.send("eth_chainId");
     const localNetworkId = "0x7a69"; // hardhat local
@@ -114,5 +120,11 @@ export const verifyContract = async (contractAddress: string, contractNameWithPa
 
   } catch (error) {
     console.error(`Error verifying ${contractNameWithPath}:`, error);
+    errorCode = 1;
   }
+    return errorCode;
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
