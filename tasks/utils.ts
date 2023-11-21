@@ -125,6 +125,6 @@ export const verifyContract = async (contractAddress: string, contractNameWithPa
     return errorCode;
 }
 
-function sleep(ms) {
+export const sleep = async (ms) => {
     return new Promise(resolve => setTimeout(resolve, ms));
 }

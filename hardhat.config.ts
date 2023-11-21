@@ -18,6 +18,7 @@ const config: HardhatUserConfig = {
 //     apiKey: process.env.ETHERSCAN_API,
       apiKey: {
         ethereum: process.env.ETHERSCAN_API,
+        sepolia: process.env.ETHERSCAN_API,
         polygon: process.env.POLYGONSCAN_API,
         polygonMumbai: process.env.POLYGONSCAN_API,
         avalancheFujiTestnet: process.env.SNOWTRACE_API,
