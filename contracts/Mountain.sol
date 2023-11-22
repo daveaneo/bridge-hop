@@ -41,9 +41,21 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
         string text // The text that was received.
     );
 
+    struct SwapData {
+        address token;     // 160 bits
+        uint96 nonce;
+        uint120 inAmount;
+        uint120 outAmount;
+        uint16 slippage;
+    }
+
+    enum TerrainType {  LAKE, MOUNTAIN }
+
     bytes32 private s_lastReceivedMessageId; // Store the last received messageId.
     string private s_lastReceivedText; // Store the last received text.
-    uint256 public nonce; // successful bridge nonce used across all networks
+    uint96 public nonce; // successful bridge nonce used across all networks
+    uint256 myNetworkAddress;
+    TerrainType public terrain;
 
     // amount of tokens at given blockchainNumber (chainlink #) -- why not network ID?
     mapping(uint256 => mapping(address => uint256)) public blockchainTokenAmounts;
@@ -63,8 +75,10 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
     /// @notice Constructor initializes the contract with the router address.
     /// @param _router The address of the router contract.
     /// @param _link The address of the link contract.
-    constructor(address _router, address _link) CCIPReceiver(_router) {
+    constructor(address _router, address _link, TerrainType _terrain, uint256 _myNetworkAddress) CCIPReceiver(_router) {
         s_linkToken = IERC20(_link);
+        terrain = _terrain;
+        myNetworkAddress = _myNetworkAddress;
     }
 
     /// @dev Modifier that checks if the chain with the given destinationChainSelector is allowlisted.
@@ -84,6 +98,125 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
         if (!allowlistedSenders[_sender]) revert SenderNotAllowlisted(_sender);
         _;
     }
+
+    /**
+     * @notice Converts SwapData to a string representation.
+     * @dev Encodes the SwapData structure into a string using abi.encodePacked.
+     * @param data The SwapData structure to encode.
+     * @return The string representation of the encoded SwapData.
+     */
+    function dataToString(SwapData memory data) public pure returns (string memory) {
+        return string(abi.encodePacked(data.token, data.nonce, data.inAmount, data.outAmount, data.slippage));
+    }
+
+
+    /**
+     * @notice Decodes a string representation back into the SwapData structure.
+     * @dev This function extracts each field from a concatenated string using bitwise operations.
+     * Assumes that the string is a direct byte representation of the structure with a total length of 52 bytes,
+     * comprising of a 20-byte address, a 12-byte uint96, two 15-byte uint120s, and a 2-byte uint16.
+     * Inline assembly is used for efficient byte manipulation.
+     * @param dataStr The string representation of the SwapData, encoded directly from the structure's bytes.
+     * @return The decoded SwapData structure.
+     */
+    function stringToData(string memory dataStr) public pure returns (SwapData memory) {
+        require(bytes(dataStr).length == 52, "Invalid data length"); // 20 + 12 + 15 + 15 + 2 bytes
+
+        bytes memory dataBytes = bytes(dataStr);
+        SwapData memory data;
+
+        uint256 buffer;
+        assembly {
+            buffer := mload(add(dataBytes, 32))
+        }
+
+        data.token = address(uint160(buffer >> 96));
+        data.nonce = uint96(buffer);
+
+        assembly {
+            buffer := mload(add(dataBytes, 44)) // 32 + 12
+        }
+
+        data.inAmount = uint120(buffer >> 136); // 256 - 120
+        data.outAmount = uint120(buffer >> 16); // 136 - 16
+        data.slippage = uint16(buffer);
+
+        return data;
+    }
+
+
+    /**
+     * @notice Decodes a string representation back into the SwapData structure using inline assembly for efficiency.
+     * @dev Assumes a specific byte order in the string: [20 bytes for address, 12 bytes for uint96, 15 bytes each for two uint120s, and 2 bytes for uint16].
+     * Uses inline assembly for efficient byte manipulation and extraction of values.
+     * @param dataStr The string representation of the SwapData, encoded directly from the structure's bytes.
+     * @return The decoded SwapData structure.
+     */
+    function stringToDataV2(string memory dataStr) public pure returns (SwapData memory) {
+        require(bytes(dataStr).length == 52, "Invalid data length");
+
+        SwapData memory data;
+        assembly {
+            // Load the first 32 bytes of the string into a variable, contains the first 20 bytes (address) and part of the uint96
+            let buffer := mload(add(dataStr, 32))
+
+            // Store the address (160 bits from the right)
+            mstore(data, and(buffer, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF))
+
+            // Load next 32 bytes (12 bytes remaining of uint96 and part of first uint120)
+            buffer := mload(add(dataStr, 52))
+
+            // Store nonce
+            mstore(add(data, 20), and(shr(160, buffer), 0xFFFFFFFFFFFFFFFFFFFFFFFF)) // uint96
+
+            // Load next 32 bytes (remaining of first uint120 and part of second uint120)
+            buffer := mload(add(dataStr, 67))
+
+            // Store inAmount
+            mstore(add(data, 32), and(shr(136, buffer), 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)) // uint120
+
+            // Load next 32 bytes (remaining of second uint120 and uint16)
+            buffer := mload(add(dataStr, 82))
+
+            // Store outAmount
+            mstore(add(data, 47), and(shr(136, buffer), 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)) // uint120
+
+            // Load the last 2 bytes for slippage
+            buffer := mload(add(dataStr, 97))
+
+            // Store slippage
+            mstore(add(data, 62), and(buffer, 0xFFFF)) // uint16
+        }
+
+        return data;
+    }
+
+
+    /**
+     * @notice Calculates the amount out for a token swap based on a constant product formula.
+     * @param blockchainNumber The identifier for the target blockchain.
+     * @param token The address of the token being swapped.
+     * @param amountIn The amount of tokens the user is swapping.
+     * @return amountOut The amount of tokens the user receives after the swap.
+     */
+    function calculateAmountOut(uint256 blockchainNumber, address token, uint256 amountIn) public view returns (uint256 amountOut) {
+        uint256 x = blockchainTokenAmounts[myNetworkAddress][token]; // Reserve in this contract // todo -- add in constant for this network -- or get current amount by queueing balanceOf
+        uint256 y = blockchainTokenAmounts[blockchainNumber][token]; // Reserve in the target blockchain (best estimate as some tokens change quantity) // todo -- create updateBlockchainTokenAmmounts, or similar, by passing/getting info
+
+        require(x > 0 && y > 0, "Insufficient liquidity");
+        require(amountIn < x, "Insufficient liquidity for this amount");
+
+        uint256 k = x * y; // Constant product
+        uint256 newX = x + amountIn;
+        uint256 newY = k / newX;
+
+        amountOut = y - newY;
+        return amountOut;
+    }
+
+
+
+
 
     /// @dev Updates the allowlist status of a destination chain for transactions.
     function allowlistDestinationChain(
@@ -115,47 +248,61 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
      */
     function bridgeNative(
         uint64 _destinationChainSelector,
+        uint96 _outAmount,
         address _receiver,
+        uint16 slippage
     )
         external
         payable
         returns (bytes32 messageId)
     {
-        // Logic to handle native token (e.g., ETH) bridging
-        // ...
+        require(msg.value > 0, "insufficient funds");
+
+
+
+        // todo -- remove bridging fees
+        uint96 adjustedIn = uint96(msg.value);
 
         // Call the internal _bridge function
-        return _bridge(_destinationChainSelector, _receiver);
+        return _bridge(address(0), adjustedIn, _outAmount, _destinationChainSelector, _receiver, slippage);
     }
-
 
     /**
      * @notice Bridges ERC20 tokens to a specified destination chain, and sends a message.
      * @dev Transfers ERC20 tokens and then calls the _bridge internal function.
      * @param _tokenAddress The address of the ERC20 token contract.
-     * @param _amount The amount of ERC20 tokens to bridge.
+     * @param _inAmount The amount of ERC20 tokens to bridge.
+     * @param _outAmount The expected amount of the asset to receive.
      * @param _destinationChainSelector The identifier for the destination blockchain.
      * @param _receiver The address of the recipient on the destination blockchain.
-     * @param _text The text message to be sent.
      * @return messageId The ID of the CCIP message that was sent.
      */
     function bridgeToken(
         address _tokenAddress,
-        uint256 _amount,
+        uint96 _inAmount,
+        uint96 _outAmount,
         uint64 _destinationChainSelector,
         address _receiver,
-        string calldata _text
+        uint16 slippage
     )
         external
         returns (bytes32 messageId)
     {
-        // Logic to handle ERC20 token bridging
-        // ...
+        require(_inAmount > 0, "insufficient amount");
+
+        IERC20 token = IERC20(_tokenAddress);
+
+        // Check if the contract has the necessary allowance
+        uint256 allowance = token.allowance(msg.sender, address(this));
+        require(allowance >= _inAmount, "Token allowance too low");
+
+        // Transfer tokens to this contract
+        token.transferFrom(msg.sender, address(this), _inAmount);
+
 
         // Call the internal _bridge function
-        return _bridge(_destinationChainSelector, _receiver, _text);
+        return _bridge(_tokenAddress, _inAmount, _outAmount, _destinationChainSelector, _receiver, slippage);
     }
-
 
 
   /**
@@ -164,40 +311,52 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
      * calls `sendMessagePayNative` to send a cross-chain message. Ensure that the ERC20
      * token contract has granted an allowance to this contract for the specified amount.
      * @param _tokenAddress The address of the ERC20 token contract
-     * @param _amount The amount of tokens to bridge
+     * @param _inAmount The amount of tokens to bridge
+     * @param _outAmount The amount of tokens to bridge
      * @param _destinationChainSelector The identifier for the destination blockchain
      * @param _receiver The address of the recipient on the destination blockchain
-     * @param _text The text message to be sent
+     * @param slippage The percent difference that is acceptable in return values --
      * @return messageId The ID of the CCIP message that was sent
      */
-    function bridge(
+    function _bridge(
         address _tokenAddress,
-        uint256 _amount,
+        uint96 _inAmount,
+        uint96 _outAmount,
         uint64 _destinationChainSelector,
-        address _receiver
+        address _receiver,
+        uint16 slippage // 100 is 1 percent
     )
         internal
         returns (bytes32 messageId)
     {
-        IERC20 token = IERC20(_tokenAddress);
 
-        // Check if the contract has the necessary allowance
-        uint256 allowance = token.allowance(msg.sender, address(this));
-        require(allowance >= _amount, "Token allowance too low");
-
-        // Transfer tokens to this contract
-        token.transferFrom(msg.sender, address(this), _amount);
-
+        // todo -- we need to remove the fees first
         // update blockchainTokenAmounts for Mountain/Lake???
         // todo -- update
 
-        // todo -- create text message that will be the backbone of our bridge. Should include nonce and quantities
-        string memory _text;
+        // check if slippage is valid
+        // todo see if expected amount works -- if on Mountain
+        uint256 outAmountActual = calculateAmountOut(_destinationChainSelector, _tokenAddress, _inAmount);
+
+        // Ensure outAmountActual is not zero to avoid division by zero
+        require(outAmountActual > 0, "Invalid output amount.");
+
+        // Calculate slippage
+        uint256 slippageAmount = _outAmount > outAmountActual
+            ? (_outAmount - outAmountActual) * 100 / outAmountActual
+            : (outAmountActual - _outAmount) * 100 / outAmountActual;
+
+        // Check if slippage is within bounds
+        require(slippageAmount <= slippage, "Too much slippage.");
+
+        // convert data to string
+        SwapData memory myData = SwapData(_tokenAddress, nonce, _inAmount, _outAmount, slippage);
+        string memory _text = dataToString(myData);
 
 
         // Call sendMessagePayNative function
         // Assuming this function is part of the same contract
-        sendMessagePayNative(_destinationChainSelector, _receiver, _text);
+        messageId = sendMessagePayNative(_destinationChainSelector, _receiver, _text);
     }
 
 
@@ -211,9 +370,9 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
     function sendMessagePayLINK(
         uint64 _destinationChainSelector,
         address _receiver,
-        string calldata _text
+        string memory _text
     )
-        external
+        internal
         onlyOwner
         onlyAllowlistedDestinationChain(_destinationChainSelector)
         returns (bytes32 messageId)
@@ -264,9 +423,9 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
     function sendMessagePayNative(
         uint64 _destinationChainSelector,
         address _receiver,
-        string calldata _text
+        string memory _text
     )
-        external
+        internal
         onlyOwner
         onlyAllowlistedDestinationChain(_destinationChainSelector)
         returns (bytes32 messageId)
@@ -337,7 +496,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
     /// @return Client.EVM2AnyMessage Returns an EVM2AnyMessage struct which contains information for sending a CCIP message.
     function _buildCCIPMessage(
         address _receiver,
-        string calldata _text,
+        string memory _text,
         address _feeTokenAddress
     ) internal pure returns (Client.EVM2AnyMessage memory) {
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message

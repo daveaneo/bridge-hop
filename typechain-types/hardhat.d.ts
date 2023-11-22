@@ -113,6 +113,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.SourceMinter__factory>;
     getContractFactory(
+      name: "Mountain",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.Mountain__factory>;
+    getContractFactory(
       name: "ProgrammableTokenTransfers",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ProgrammableTokenTransfers__factory>;
@@ -258,6 +262,11 @@ declare module "hardhat/types/runtime" {
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.SourceMinter>;
+    getContractAt(
+      name: "Mountain",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.Mountain>;
     getContractAt(
       name: "ProgrammableTokenTransfers",
       address: string,

@@ -8,4 +8,5 @@ export type { utils };
 export type { BasicMessageReceiver } from "./BasicMessageReceiver";
 export type { BasicMessageSender } from "./BasicMessageSender";
 export type { BasicTokenSender } from "./BasicTokenSender";
+export type { Mountain } from "./Mountain";
 export type { ProgrammableTokenTransfers } from "./ProgrammableTokenTransfers";

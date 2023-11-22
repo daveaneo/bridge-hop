@@ -54,6 +54,8 @@ export type { MyNFT } from "./artifacts/contracts/cross-chain-nft-minter/MyNFT";
 export { MyNFT__factory } from "./factories/artifacts/contracts/cross-chain-nft-minter/MyNFT__factory";
 export type { SourceMinter } from "./artifacts/contracts/cross-chain-nft-minter/SourceMinter";
 export { SourceMinter__factory } from "./factories/artifacts/contracts/cross-chain-nft-minter/SourceMinter__factory";
+export type { Mountain } from "./artifacts/contracts/Mountain";
+export { Mountain__factory } from "./factories/artifacts/contracts/Mountain__factory";
 export type { ProgrammableTokenTransfers } from "./artifacts/contracts/ProgrammableTokenTransfers";
 export { ProgrammableTokenTransfers__factory } from "./factories/artifacts/contracts/ProgrammableTokenTransfers__factory";
 export type { Withdraw } from "./artifacts/contracts/utils/Withdraw";
