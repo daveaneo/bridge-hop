@@ -99,7 +99,7 @@ export const getFaucetTokensAddresses = (network: string) => {
     return { ccipBnM: CCIP_BnM_ADDRESSES[network], ccipLnM: CCIP_LnM_ADDRESSES[network] };
 }
 
-export const verifyContract = async (contractAddress: string, contractNameWithPath: string, constructorArgs: array) => {
+export const verifyContract = async (contractAddress: string, contractNameWithPath: string, constructorArgs: Array<string>) => {
   const hre = await import("hardhat");
   let errorCode =0;
   try {
