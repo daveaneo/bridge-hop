@@ -404,7 +404,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         require(slippageAmount <= slippage, "Too much slippage.");
 
         // convert data to string
-        SwapData memory myData = SwapData(_tokenAddress, nonce, _inAmount, _outAmount, slippage);
+        SwapData memory myData = SwapData(TransmissionType.SwapData, _tokenAddress, nonce, _inAmount, _outAmount, slippage);
         string memory _text = dataToString(myData);
 
 
@@ -631,6 +631,8 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         IERC20(_token).transfer(_beneficiary, amount);
     }
 
+
+    // todo -- mark as onlyOwner for now
     /// @notice Withdraws staged liquidity based on the terrain type
     /// @param blockchainId The identifier of the blockchain
     /// @param token The address of the token (address(0) for ETH)
