@@ -6,6 +6,7 @@ import {OwnerIsCreator} from "@chainlink/contracts-ccip/src/v0.8/shared/access/O
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol";
 import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
@@ -14,7 +15,7 @@ import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-sol
  */
 
 /// @title - A simple messenger contract for sending/receving string data across chains.
-contract Mountain is CCIPReceiver, OwnerIsCreator {
+contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     // Custom errors to provide more descriptive revert messages.
     error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees); // Used to make sure contract has enough balance.
     error NothingToWithdraw(); // Used when trying to withdraw Ether but there's nothing to withdraw.
@@ -41,15 +42,22 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
         string text // The text that was received.
     );
 
+    // Event to log the staging of liquidity
+    event LiquidityStaged(uint256 indexed blockchainId, address indexed provider, address indexed token, uint256 amount);
+
+
+    enum TerrainType {  LAKE, MOUNTAIN }
+    enum TransmissionType {  SwapData, LiquidityStaging, Liquidity }
+
     struct SwapData {
         address token;     // 160 bits
-        uint96 nonce;
+        uint88 nonce;
+        TransmissionType transmissionType;
         uint120 inAmount;
         uint120 outAmount;
         uint16 slippage;
     }
 
-    enum TerrainType {  LAKE, MOUNTAIN }
 
     bytes32 private s_lastReceivedMessageId; // Store the last received messageId.
     string private s_lastReceivedText; // Store the last received text.
@@ -59,6 +67,11 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
 
     // amount of tokens at given blockchainNumber (chainlink #) -- why not network ID?
     mapping(uint256 => mapping(address => uint256)) public blockchainTokenAmounts;
+    // Mapping to track the staged liquidity
+    // [blockchain identifier][provider's address][token's address] => amount
+    mapping(uint256 => mapping(address => mapping(address => uint256))) public liquidityStaging;
+   // Mapping for approved withdrawals (used when this contract acts as a Lake)
+    mapping(uint256 => mapping(address => mapping(address => uint256))) public approvedWithdrawals;
 
 
     // Mapping to keep track of allowlisted destination chains.
@@ -75,7 +88,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
     /// @notice Constructor initializes the contract with the router address.
     /// @param _router The address of the router contract.
     /// @param _link The address of the link contract.
-    constructor(address _router, address _link, TerrainType _terrain, uint256 _myNetworkAddress) CCIPReceiver(_router) {
+    constructor(address _router, address _link, TerrainType _terrain, uint256 _myNetworkAddress) CCIPReceiver(_router)  {
         s_linkToken = IERC20(_link);
         terrain = _terrain;
         myNetworkAddress = _myNetworkAddress;
@@ -99,6 +112,9 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
         _;
     }
 
+    // todo -- we need to add in ability to send different types of messages not just swaps
+    // todo -- we will have to add liquidity, remove liquidity, approve removal of liquidity
+    // todo -- this string will need a type identifier
     /**
      * @notice Converts SwapData to a string representation.
      * @dev Encodes the SwapData structure into a string using abi.encodePacked.
@@ -131,7 +147,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
         }
 
         data.token = address(uint160(buffer >> 96));
-        data.nonce = uint96(buffer);
+        data.nonce = uint88(buffer);
 
         assembly {
             buffer := mload(add(dataBytes, 44)) // 32 + 12
@@ -145,6 +161,8 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
     }
 
 
+
+    // todo -- update to new structure
     /**
      * @notice Decodes a string representation back into the SwapData structure using inline assembly for efficiency.
      * @dev Assumes a specific byte order in the string: [20 bytes for address, 12 bytes for uint96, 15 bytes each for two uint120s, and 2 bytes for uint16].
@@ -238,6 +256,42 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
     function allowlistSender(address _sender, bool allowed) external onlyOwner {
         allowlistedSenders[_sender] = allowed;
     }
+
+    /// @notice Allows liquidity providers to stage liquidity (ERC20 tokens or ETH)
+    /// @param token The address of the ERC20 token to be staged; address(0) for ETH
+    /// @param amount The amount of the token (or ETH) to be staged
+    function stageLiquidity(address token, uint256 amount) external payable nonReentrant {
+        require(token == address(0) || amount > 0, "Invalid amount");
+
+        if (token == address(0)) {
+            // Staging ETH
+            require(msg.value == amount, "ETH value mismatch");
+            liquidityStaging[myNetworkAddress][msg.sender][token] += msg.value;
+        } else {
+            // Staging ERC20 tokens
+            IERC20(token).transferFrom(msg.sender, address(this), amount);
+            liquidityStaging[myNetworkAddress][msg.sender][token] += amount;
+        }
+
+        emit LiquidityStaged(myNetworkAddress, msg.sender, token, amount);
+    }
+
+//    /// @notice Allows liquidity providers to withdraw their staged liquidity (ERC20 tokens or ETH)
+//    /// @param token The address of the ERC20 token to be withdrawn; address(0) for ETH
+//    function withdrawStagedLiquidity(address token) external nonReentrant {
+//        uint256 amount = liquidityStaging[myNetworkAddress][msg.sender][token];
+//        require(amount > 0, "No liquidity to withdraw");
+//        liquidityStaging[myNetworkAddress][msg.sender][token] = 0;
+//
+//        if (token == address(0)) {
+//            // Withdrawing ETH
+//            payable(msg.sender).transfer(amount);
+//        } else {
+//            // Withdrawing ERC20 tokens
+//            IERC20(token).transfer(msg.sender, amount);
+//        }
+//    }
+//
 
     /**
      * @notice Bridges native tokens to a specified destination chain, and sends a message.
@@ -480,6 +534,9 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
         s_lastReceivedMessageId = any2EvmMessage.messageId; // fetch the messageId
         s_lastReceivedText = abi.decode(any2EvmMessage.data, (string)); // abi-decoding of the sent text
 
+
+
+
         emit MessageReceived(
             any2EvmMessage.messageId,
             any2EvmMessage.sourceChainSelector, // fetch the source chain identifier (aka selector)
@@ -572,5 +629,27 @@ contract Mountain is CCIPReceiver, OwnerIsCreator {
         if (amount == 0) revert NothingToWithdraw();
 
         IERC20(_token).transfer(_beneficiary, amount);
+    }
+
+    /// @notice Withdraws staged liquidity based on the terrain type
+    /// @param blockchainId The identifier of the blockchain
+    /// @param token The address of the token (address(0) for ETH)
+    /// @param amount The amount to withdraw
+    function withdrawStagedLiquidity(uint256 blockchainId, address token, uint256 amount) external nonReentrant {
+        if (terrain == TerrainType.MOUNTAIN || approvedWithdrawals[blockchainId][msg.sender][token] >= amount) {
+            require(liquidityStaging[blockchainId][msg.sender][token] >= amount, "Insufficient liquidity staged");
+            liquidityStaging[blockchainId][msg.sender][token] -= amount;
+            if (terrain == TerrainType.LAKE) {
+                approvedWithdrawals[blockchainId][msg.sender][token] -= amount;
+            }
+
+            if (token == address(0)) {
+                payable(msg.sender).transfer(amount);
+            } else {
+                IERC20(token).transfer(msg.sender, amount);
+            }
+        } else {
+            revert("Withdrawal not approved or terrain type mismatch");
+        }
     }
 }
