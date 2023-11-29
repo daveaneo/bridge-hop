@@ -97,8 +97,8 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     /// @dev Modifier that checks if the chain with the given destinationChainSelector is allowlisted.
     /// @param _destinationChainSelector The selector of the destination chain.
     modifier onlyAllowlistedDestinationChain(uint64 _destinationChainSelector) {
-        // todo -- remove temp 'true &&' overrides
-        if (true && !allowlistedDestinationChains[_destinationChainSelector])
+        // todo -- remove temp 'false &&' overrides
+        if (false && !allowlistedDestinationChains[_destinationChainSelector])
             revert DestinationChainNotAllowlisted(_destinationChainSelector);
         _;
     }
@@ -108,9 +108,9 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     /// @param _sender The address of the sender.
     modifier onlyAllowlisted(uint64 _sourceChainSelector, address _sender) {
         // todo -- remove temp 'true &&' overrides
-        if (true && !allowlistedSourceChains[_sourceChainSelector])
+        if (false && !allowlistedSourceChains[_sourceChainSelector])
             revert SourceChainNotAllowlisted(_sourceChainSelector);
-        if (true && !allowlistedSenders[_sender]) revert SenderNotAllowlisted(_sender);
+        if (false && !allowlistedSenders[_sender]) revert SenderNotAllowlisted(_sender);
         _;
     }
 
