@@ -10,3 +10,4 @@ export type { BasicMessageSender } from "./BasicMessageSender";
 export type { BasicTokenSender } from "./BasicTokenSender";
 export type { Mountain } from "./Mountain";
 export type { ProgrammableTokenTransfers } from "./ProgrammableTokenTransfers";
+export type { TransmissionLib } from "./TransmissionLib";

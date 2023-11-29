@@ -121,6 +121,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ProgrammableTokenTransfers__factory>;
     getContractFactory(
+      name: "TransmissionLib",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.TransmissionLib__factory>;
+    getContractFactory(
       name: "Withdraw",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.Withdraw__factory>;
@@ -272,6 +276,11 @@ declare module "hardhat/types/runtime" {
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.ProgrammableTokenTransfers>;
+    getContractAt(
+      name: "TransmissionLib",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.TransmissionLib>;
     getContractAt(
       name: "Withdraw",
       address: string,

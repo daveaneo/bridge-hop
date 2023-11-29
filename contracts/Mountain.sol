@@ -7,6 +7,7 @@ import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.s
 import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol";
 import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./TransmissionLib.sol";
 
 /**
  * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
@@ -16,6 +17,11 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /// @title - A simple messenger contract for sending/receving string data across chains.
 contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
+    using TransmissionLib for TransmissionLib.SwapData;
+    using TransmissionLib for TransmissionLib.LiquidityStaging;
+    using TransmissionLib for TransmissionLib.Liquidity;
+    using TransmissionLib for TransmissionLib.TransmissionType;
+
     // Custom errors to provide more descriptive revert messages.
     error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees); // Used to make sure contract has enough balance.
     error NothingToWithdraw(); // Used when trying to withdraw Ether but there's nothing to withdraw.
@@ -39,7 +45,8 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         bytes32 indexed messageId, // The unique ID of the CCIP message.
         uint64 indexed sourceChainSelector, // The chain selector of the source chain.
         address sender, // The address of the sender from the source chain.
-        string text // The text that was received.
+        string text, // The text that was received.
+        TransmissionLib.TransmissionType transmissionType // transmission type
     );
 
     // Event to log the staging of liquidity
@@ -47,23 +54,20 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
 
 
     enum TerrainType {  LAKE, MOUNTAIN }
-    enum TransmissionType {  SwapData, LiquidityStaging, Liquidity }
+//    enum TransmissionLib.TransmissionType {  SwapData, LiquidityStaging, Liquidity }
 
-    struct SwapData {
-        address token;     // 160 bits
-        uint88 nonce;
-        TransmissionType transmissionType;
-        uint120 inAmount;
-        uint120 outAmount;
-        uint16 slippage;
+    struct TerrainInfo {
+        uint256 blockchainId;
+        address contractAddress;
     }
-
 
     bytes32 private s_lastReceivedMessageId; // Store the last received messageId.
     string private s_lastReceivedText; // Store the last received text.
-    uint96 public nonce; // successful bridge nonce used across all networks
+    uint88 public nonce; // successful bridge nonce used across all networks
     uint256 myNetworkAddress;
     TerrainType public terrain;
+    TerrainInfo public mountainInfo;
+
 
     // amount of tokens at given blockchainNumber (chainlink #) -- why not network ID?
     mapping(uint256 => mapping(address => uint256)) public blockchainTokenAmounts;
@@ -114,102 +118,6 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         _;
     }
 
-    // todo -- we need to add in ability to send different types of messages not just swaps
-    // todo -- we will have to add liquidity, remove liquidity, approve removal of liquidity
-    // todo -- this string will need a type identifier
-    /**
-     * @notice Converts SwapData to a string representation.
-     * @dev Encodes the SwapData structure into a string using abi.encodePacked.
-     * @param data The SwapData structure to encode.
-     * @return The string representation of the encoded SwapData.
-     */
-    function dataToString(SwapData memory data) public pure returns (string memory) {
-        return string(abi.encodePacked(data.token, data.nonce, data.inAmount, data.outAmount, data.slippage));
-    }
-
-
-    /**
-     * @notice Decodes a string representation back into the SwapData structure.
-     * @dev This function extracts each field from a concatenated string using bitwise operations.
-     * Assumes that the string is a direct byte representation of the structure with a total length of 52 bytes,
-     * comprising of a 20-byte address, a 12-byte uint96, two 15-byte uint120s, and a 2-byte uint16.
-     * Inline assembly is used for efficient byte manipulation.
-     * @param dataStr The string representation of the SwapData, encoded directly from the structure's bytes.
-     * @return The decoded SwapData structure.
-     */
-    function stringToData(string memory dataStr) public pure returns (SwapData memory) {
-        require(bytes(dataStr).length == 52, "Invalid data length"); // 20 + 12 + 15 + 15 + 2 bytes
-
-        bytes memory dataBytes = bytes(dataStr);
-        SwapData memory data;
-
-        uint256 buffer;
-        assembly {
-            buffer := mload(add(dataBytes, 32))
-        }
-
-        data.token = address(uint160(buffer >> 96));
-        data.nonce = uint88(buffer);
-
-        assembly {
-            buffer := mload(add(dataBytes, 44)) // 32 + 12
-        }
-
-        data.inAmount = uint120(buffer >> 136); // 256 - 120
-        data.outAmount = uint120(buffer >> 16); // 136 - 16
-        data.slippage = uint16(buffer);
-
-        return data;
-    }
-
-
-
-    // todo -- update to new structure
-    /**
-     * @notice Decodes a string representation back into the SwapData structure using inline assembly for efficiency.
-     * @dev Assumes a specific byte order in the string: [20 bytes for address, 12 bytes for uint96, 15 bytes each for two uint120s, and 2 bytes for uint16].
-     * Uses inline assembly for efficient byte manipulation and extraction of values.
-     * @param dataStr The string representation of the SwapData, encoded directly from the structure's bytes.
-     * @return The decoded SwapData structure.
-     */
-    function stringToDataV2(string memory dataStr) public pure returns (SwapData memory) {
-        require(bytes(dataStr).length == 52, "Invalid data length");
-
-        SwapData memory data;
-        assembly {
-            // Load the first 32 bytes of the string into a variable, contains the first 20 bytes (address) and part of the uint96
-            let buffer := mload(add(dataStr, 32))
-
-            // Store the address (160 bits from the right)
-            mstore(data, and(buffer, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF))
-
-            // Load next 32 bytes (12 bytes remaining of uint96 and part of first uint120)
-            buffer := mload(add(dataStr, 52))
-
-            // Store nonce
-            mstore(add(data, 20), and(shr(160, buffer), 0xFFFFFFFFFFFFFFFFFFFFFFFF)) // uint96
-
-            // Load next 32 bytes (remaining of first uint120 and part of second uint120)
-            buffer := mload(add(dataStr, 67))
-
-            // Store inAmount
-            mstore(add(data, 32), and(shr(136, buffer), 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)) // uint120
-
-            // Load next 32 bytes (remaining of second uint120 and uint16)
-            buffer := mload(add(dataStr, 82))
-
-            // Store outAmount
-            mstore(add(data, 47), and(shr(136, buffer), 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)) // uint120
-
-            // Load the last 2 bytes for slippage
-            buffer := mload(add(dataStr, 97))
-
-            // Store slippage
-            mstore(add(data, 62), and(buffer, 0xFFFF)) // uint16
-        }
-
-        return data;
-    }
 
 
     /**
@@ -259,23 +167,60 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         allowlistedSenders[_sender] = allowed;
     }
 
-    /// @notice Allows liquidity providers to stage liquidity (ERC20 tokens or ETH)
-    /// @param token The address of the ERC20 token to be staged; address(0) for ETH
-    /// @param amount The amount of the token (or ETH) to be staged
-    function stageLiquidity(address token, uint256 amount) external payable nonReentrant {
-        require(token == address(0) || amount > 0, "Invalid amount");
 
-        if (token == address(0)) {
+    /**
+     * @notice Sets the mountain information.
+     * @param _blockchainId The blockchain ID for the mountain.
+     * @param _contractAddress The contract address for the mountain.
+     * @dev Only callable by the owner (admin) of the contract.
+     */
+    function setMountainInfo(uint256 _blockchainId, address _contractAddress) external onlyOwner {
+        mountainInfo = TerrainInfo({
+            blockchainId: _blockchainId,
+            contractAddress: _contractAddress
+        });
+    }
+
+
+    /// @notice Allows liquidity providers to stage liquidity (ERC20 tokens or ETH)
+    /// @param _tokenAddress The address of the ERC20 token to be staged; address(0) for ETH
+    /// @param amount The amount of the token (or ETH) to be staged
+    function stageLiquidity(address _tokenAddress, uint256 amount) external payable nonReentrant {
+        require(_tokenAddress == address(0) || amount > 0, "Invalid amount");
+
+        if (_tokenAddress == address(0)) {
             // Staging ETH
             require(msg.value == amount, "ETH value mismatch");
-            liquidityStaging[myNetworkAddress][msg.sender][token] += msg.value;
+            liquidityStaging[myNetworkAddress][msg.sender][_tokenAddress] += msg.value;
         } else {
-            // Staging ERC20 tokens
-            IERC20(token).transferFrom(msg.sender, address(this), amount);
-            liquidityStaging[myNetworkAddress][msg.sender][token] += amount;
+            // Staging ERC20 token
+            IERC20(_tokenAddress).transferFrom(msg.sender, address(this), amount);
+            liquidityStaging[myNetworkAddress][msg.sender][_tokenAddress] += amount;
         }
 
-        emit LiquidityStaged(myNetworkAddress, msg.sender, token, amount);
+
+        // if lake, we want to
+
+
+        // if Lake, transmit info to Mountain
+        if(terrain == TerrainType.LAKE){
+            require(mountainInfo.contractAddress!=address(0), "Mountain info not set");
+            TransmissionLib.LiquidityStaging memory myData = TransmissionLib.LiquidityStaging(TransmissionLib.TransmissionType.LiquidityStaging, _tokenAddress, nonce, uint120(amount), 0);
+            string memory _text = TransmissionLib.dataToStringLiquidityStaging(myData);
+            Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
+                mountainInfo.contractAddress,
+                _text,
+                address(0)
+            );
+
+            // Send the CCIP message through the router and store the returned CCIP message ID
+            // Initialize a router client instance to interact with cross-chain router
+            IRouterClient router = IRouterClient(this.getRouter());
+            router.ccipSend(uint64(mountainInfo.blockchainId), evm2AnyMessage);
+
+        }
+
+        emit LiquidityStaged(myNetworkAddress, msg.sender, _tokenAddress, amount);
     }
 
 //    /// @notice Allows liquidity providers to withdraw their staged liquidity (ERC20 tokens or ETH)
@@ -406,8 +351,8 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         require(slippageAmount <= slippage, "Too much slippage.");
 
         // convert data to string
-        SwapData memory myData = SwapData(TransmissionType.SwapData, _tokenAddress, nonce, _inAmount, _outAmount, slippage);
-        string memory _text = dataToString(myData);
+        TransmissionLib.SwapData memory myData = TransmissionLib.SwapData(TransmissionLib.TransmissionType.SwapData, _tokenAddress, nonce, _inAmount, _outAmount, slippage);
+        string memory _text = TransmissionLib.dataToStringSwap(myData);
 
 
         // Call sendMessagePayNative function
@@ -537,13 +482,26 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         s_lastReceivedText = abi.decode(any2EvmMessage.data, (string)); // abi-decoding of the sent text
 
 
-
+        TransmissionLib.TransmissionType transmissionType = TransmissionLib.getTypeFromString(s_lastReceivedText);
+        if (transmissionType == TransmissionLib.TransmissionType.SwapData) {
+            TransmissionLib.SwapData memory swapData = TransmissionLib.stringToDataSwap(s_lastReceivedText);
+            // Further processing with swapData
+        } else if (transmissionType == TransmissionLib.TransmissionType.LiquidityStaging) {
+            TransmissionLib.LiquidityStaging memory myLiquidityStaging = TransmissionLib.stringToDataLiquidityStaging(s_lastReceivedText);
+            // Further processing with liquidityStaging
+        } else if (transmissionType == TransmissionLib.TransmissionType.Liquidity) {
+            TransmissionLib.Liquidity memory liquidity = TransmissionLib.stringToDataLiquidity(s_lastReceivedText);
+            // Further processing with liquidity
+        } else {
+            revert("Unknown transmission type");
+        }
 
         emit MessageReceived(
             any2EvmMessage.messageId,
             any2EvmMessage.sourceChainSelector, // fetch the source chain identifier (aka selector)
             abi.decode(any2EvmMessage.sender, (address)), // abi-decoding of the sender address,
-            abi.decode(any2EvmMessage.data, (string))
+            abi.decode(any2EvmMessage.data, (string)),
+            transmissionType
         );
     }
 
@@ -572,6 +530,16 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
                 feeToken: _feeTokenAddress
             });
     }
+
+
+    /**
+     * @notice Retrieves the mountain information.
+     * @return The terrain information for the mountain.
+     */
+    function getMountainInfo() external view returns (TerrainInfo memory) {
+        return mountainInfo;
+    }
+
 
     /// @notice Fetches the amount of given asset at given blockchain
     /// @param _id Network Id

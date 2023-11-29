@@ -58,6 +58,8 @@ export type { Mountain } from "./artifacts/contracts/Mountain";
 export { Mountain__factory } from "./factories/artifacts/contracts/Mountain__factory";
 export type { ProgrammableTokenTransfers } from "./artifacts/contracts/ProgrammableTokenTransfers";
 export { ProgrammableTokenTransfers__factory } from "./factories/artifacts/contracts/ProgrammableTokenTransfers__factory";
+export type { TransmissionLib } from "./artifacts/contracts/TransmissionLib";
+export { TransmissionLib__factory } from "./factories/artifacts/contracts/TransmissionLib__factory";
 export type { Withdraw } from "./artifacts/contracts/utils/Withdraw";
 export { Withdraw__factory } from "./factories/artifacts/contracts/utils/Withdraw__factory";
 export type { BurnMintERC677Helper } from "./abi/BurnMintERC677Helper";
