@@ -23,10 +23,26 @@ task(`deploy-mountain`, `Deploys Mountain contracts on...`)
 
         console.log('myNetworkChainlinkId: ', myNetworkChainlinkId);
 
-        console.log(`ℹ️  Attempting to deploy ProgrammableTokenTransfers on ${networkName} blockchain using ${deployer.address} address, with the Router address ${routerAddress} provided as constructor argument`);
+
+        // Deploy the library
+        console.log(`ℹ️  Attempting to deploy transmissionLib on ${networkName} blockchain using ${deployer.address} address`);
+
+        const transmissionLibFactory = await hre.ethers.getContractFactory("TransmissionLib");
+        const transmissionLib = await transmissionLibFactory.deploy();
+        await transmissionLib.deployed();
+        console.log("TransmissionLib deployed to:", transmissionLib.address);
+
+
+        console.log(`ℹ️  Attempting to deploy Mountain on ${networkName} blockchain using ${deployer.address} address, with the Router address ${routerAddress} provided as constructor argument`);
         spinner.start();
 
-        const mountainFactory = await hre.ethers.getContractFactory('Mountain');
+
+        // Deploy the Mountain contract with the library linked
+        const mountainFactory = await hre.ethers.getContractFactory('Mountain', {
+            libraries: {
+                TransmissionLib: transmissionLib.address,
+            },
+        });
         const mountain: ProgrammableTokenTransfers = await mountainFactory.deploy(routerAddress, linkAddress, 1, myNetworkChainlinkId);
         await mountain.deployed();
 
