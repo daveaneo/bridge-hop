@@ -43,7 +43,7 @@ task(`deploy-mountain`, `Deploys Mountain contracts on...`)
                 TransmissionLib: transmissionLib.address,
             },
         });
-        const mountain: ProgrammableTokenTransfers = await mountainFactory.deploy(routerAddress, linkAddress, 1, myNetworkChainlinkId);
+        const mountain = await mountainFactory.deploy(routerAddress, linkAddress, 1, myNetworkChainlinkId);
         await mountain.deployed();
 
         spinner.stop();
