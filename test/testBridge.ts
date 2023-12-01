@@ -11,6 +11,7 @@ describe("Mountain Contract", function () {
   var linkAddress;
   var routerAddress;
   var myNetworkChainlinkId;
+  var lakeBlockchainId;
 
   const networkChainlinkId = "4051577828743386545";
 
@@ -19,6 +20,7 @@ describe("Mountain Contract", function () {
     const networkName = hre.network.name;
     routerAddress = getRouterConfig(hre.network.name).address;
     myNetworkChainlinkId = routerConfig[networkName].chainSelector;
+    lakeBlockchainId = 404; // todo --
     linkAddress = LINK_ADDRESSES[hre.network.name]
 
     tokenFactory = await ethers.getContractFactory("TestToken");
@@ -94,18 +96,51 @@ describe("Mountain Contract", function () {
       ).to.be.revertedWith("Only callable by owner");
     });
 
-  });
-
-  describe("Adding Liquidity from Staged", function () {
-    // ... Tests for adding liquidity from staged
-
     // Example test for adding liquidity without any staged liquidity
     it("Doesn't work without staged liquidity", async function () {
       const amountToStage = ethers.utils.parseEther("1");
       await expect(
-        mountain.connect(addr1).addLiquidityFromStaged(ethers.constants.AddressZero, amountToStage)
-      ).to.be.revertedWith("Insufficient staged liquidity");
+        mountain.connect(owner).addLiquidityFromStaged(ethers.constants.AddressZero, lakeBlockchainId, 10000, owner.address)
+      ).to.be.revertedWith("Non-zero amounts required in staging");
     });
+
+
+
+  });
+
+//
+//   */    function addLiquidityFromStaged(
+//         address tokenAddress,
+//         uint256 lakeBlockchainId,
+//         uint16 slippage,
+//         address receiver
+//     ) external onlyOwner {
+
+  describe("Adding Liquidity from Staged", function () {
+    // ... Tests for adding liquidity from staged
+    beforeEach(async function () {
+      // add eth
+      const amountToStage = ethers.utils.parseEther("1");
+      await mountain.connect(owner).stageLiquidity(ethers.constants.AddressZero, amountToStage, { value: amountToStage });
+
+      // add token
+      await token.connect(owner).approve(mountain.address, amountToStage);
+      await mountain.stageLiquidity(token.address, amountToStage);
+
+    });
+
+        // Example test for adding liquidity without any staged liquidity
+        it("Doesn't work without staged liquidity on Lake", async function () {
+          const amountToStage = ethers.utils.parseEther("1");
+          await expect(
+            mountain.connect(owner).addLiquidityFromStaged(ethers.constants.AddressZero, lakeBlockchainId, 10000, owner.address)
+          ).to.be.revertedWith("Non-zero amounts required in staging");
+        });
+
+        // todo -- tests for adding liquidity
+        // todo -- how to add liquidity from other network in tests? Helper function?
+
+        // todo -- encode and decode messages to structures
 
     // ... Tests for other scenarios
   });
