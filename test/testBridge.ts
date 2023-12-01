@@ -88,10 +88,9 @@ describe("Mountain Contract", function () {
 
     it("Staging liquidity fails for non owner", async function () {
       const amountToStage = ethers.utils.parseEther("1");
-      await mountain.connect(addr1).stageLiquidity(ethers.constants.AddressZero, amountToStage, { value: amountToStage });
 
       await expect(
-        mountain.liquidityStaging(networkChainlinkId, ethers.constants.AddressZero)
+        mountain.connect(addr1).stageLiquidity(ethers.constants.AddressZero, amountToStage, { value: amountToStage })
       ).to.be.revertedWith("Only callable by owner");
     });
 
