@@ -72,21 +72,29 @@ describe("Mountain Contract", function () {
   describe("Staging Liquidity", function () {
     it("Staging liquidity works for ETH", async function () {
       const amountToStage = ethers.utils.parseEther("1");
-      await mountain.connect(addr1).stageLiquidity(ethers.constants.AddressZero, amountToStage, { value: amountToStage });
-      expect(await mountain.liquidityStaging(networkChainlinkId, addr1.address, ethers.constants.AddressZero)).to.equal(amountToStage);
+      await mountain.connect(owner).stageLiquidity(ethers.constants.AddressZero, amountToStage, { value: amountToStage });
+      expect(await mountain.liquidityStaging(networkChainlinkId, ethers.constants.AddressZero)).to.equal(amountToStage);
     });
+
 
     it("Staging liquidity works for token", async function () {
       const amountToStage = ethers.utils.parseEther("1");
 
       // Approve mountain.address to spend the tokens
-      await token.connect(addr1).approve(mountain.address, amountToStage);
-      await mountain.connect(addr1).stageLiquidity(token.address, amountToStage);
-      expect(await mountain.liquidityStaging(networkChainlinkId, addr1.address, token.address)).to.equal(amountToStage);
+      await token.connect(owner).approve(mountain.address, amountToStage);
+      await mountain.stageLiquidity(token.address, amountToStage);
+      expect(await mountain.liquidityStaging(networkChainlinkId, token.address)).to.equal(amountToStage);
     });
 
+    it("Staging liquidity fails for non owner", async function () {
+      const amountToStage = ethers.utils.parseEther("1");
+      await mountain.connect(addr1).stageLiquidity(ethers.constants.AddressZero, amountToStage, { value: amountToStage });
 
-    // ... Other tests related to staging liquidity
+      await expect(
+        mountain.liquidityStaging(networkChainlinkId, ethers.constants.AddressZero)
+      ).to.be.revertedWith("Only callable by owner");
+    });
+
   });
 
   describe("Adding Liquidity from Staged", function () {

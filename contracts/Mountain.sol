@@ -203,7 +203,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     /// @notice Allows liquidity providers to stage liquidity (ERC20 tokens or ETH)
     /// @param _tokenAddress The address of the ERC20 token to be staged; address(0) for ETH
     /// @param amount The amount of the token (or ETH) to be staged
-    function stageLiquidity(address _tokenAddress, uint256 amount) external payable nonReentrant {
+    function stageLiquidity(address _tokenAddress, uint256 amount) external payable onlyOwner nonReentrant {
         require(_tokenAddress == address(0) || amount > 0, "Invalid amount");
 
         if (_tokenAddress == address(0)) {
