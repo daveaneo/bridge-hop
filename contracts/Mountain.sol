@@ -51,6 +51,25 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
 
     // Event to log the staging of liquidity
     event LiquidityStaged(uint256 indexed blockchainId, address indexed provider, address indexed token, uint256 amount);
+    event LiquidityAdded(
+        address indexed provider,
+        address indexed tokenAddress,
+        uint256 amountMountain,
+        uint256 lakeBlockchainId,
+        address lakeContractAddress,
+        uint256 amountLake,
+        address receiver
+    );
+
+    event LiquidityRemoved(
+        address indexed provider,
+        address indexed tokenAddress,
+        uint256 amountMountain,
+        uint256 lakeBlockchainId,
+        address lakeContractAddress,
+        uint256 amountLake,
+        address receiver
+    );
 
 
     enum TerrainType {  LAKE, MOUNTAIN }
@@ -64,18 +83,17 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     bytes32 private s_lastReceivedMessageId; // Store the last received messageId.
     string private s_lastReceivedText; // Store the last received text.
     uint88 public nonce; // successful bridge nonce used across all networks
-    uint256 myNetworkAddress;
+    uint256 public myNetworkAddress;
     TerrainType public terrain;
     TerrainInfo public mountainInfo;
 
 
-    // amount of tokens at given blockchainNumber (chainlink #) -- why not network ID?
-    mapping(uint256 => mapping(address => uint256)) public blockchainTokenAmounts;
-    // Mapping to track the staged liquidity
-    // [blockchain identifier][provider's address][token's address] => amount
-    mapping(uint256 => mapping(address => mapping(address => uint256))) public liquidityStaging;
-   // Mapping for approved withdrawals (used when this contract acts as a Lake)
-    mapping(uint256 => mapping(address => mapping(address => uint256))) public approvedWithdrawals;
+    // [blockchain identifier][token's address] => amount
+    mapping(uint256 => mapping(address => uint256)) public liquidity;
+    // [blockchain identifier][token's address] => amount
+    mapping(uint256 => mapping(address => uint256)) public liquidityStaging;
+    // Mapping for approved withdrawals (used when this contract acts as a Lake)
+    mapping(uint256 => mapping(address => uint256)) public approvedWithdrawals;
 
 
     // Mapping to keep track of allowlisted destination chains.
@@ -87,7 +105,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     // Mapping to keep track of allowlisted senders.
     mapping(address => bool) public allowlistedSenders;
 
-    IERC20 private s_linkToken;
+    IERC20 public s_linkToken;
 
     /// @notice Constructor initializes the contract with the router address.
     /// @param _router The address of the router contract.
@@ -128,8 +146,8 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
      * @return amountOut The amount of tokens the user receives after the swap.
      */
     function calculateAmountOut(uint256 blockchainNumber, address token, uint256 amountIn) public view returns (uint256 amountOut) {
-        uint256 x = blockchainTokenAmounts[myNetworkAddress][token]; // Reserve in this contract // todo -- add in constant for this network -- or get current amount by queueing balanceOf
-        uint256 y = blockchainTokenAmounts[blockchainNumber][token]; // Reserve in the target blockchain (best estimate as some tokens change quantity) // todo -- create updateBlockchainTokenAmmounts, or similar, by passing/getting info
+        uint256 x = liquidity[myNetworkAddress][token]; // Reserve in this contract // todo -- add in constant for this network -- or get current amount by queueing balanceOf
+        uint256 y = liquidity[blockchainNumber][token]; // Reserve in the target blockchain (best estimate as some tokens change quantity) // todo -- create updateBlockchainTokenAmmounts, or similar, by passing/getting info
 
         require(x > 0 && y > 0, "Insufficient liquidity");
         require(amountIn < x, "Insufficient liquidity for this amount");
@@ -191,11 +209,11 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         if (_tokenAddress == address(0)) {
             // Staging ETH
             require(msg.value == amount, "ETH value mismatch");
-            liquidityStaging[myNetworkAddress][msg.sender][_tokenAddress] += msg.value;
+            liquidityStaging[myNetworkAddress][_tokenAddress] += msg.value;
         } else {
             // Staging ERC20 token
             IERC20(_tokenAddress).transferFrom(msg.sender, address(this), amount);
-            liquidityStaging[myNetworkAddress][msg.sender][_tokenAddress] += amount;
+            liquidityStaging[myNetworkAddress][_tokenAddress] += amount;
         }
 
 
@@ -226,9 +244,9 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
 //    /// @notice Allows liquidity providers to withdraw their staged liquidity (ERC20 tokens or ETH)
 //    /// @param token The address of the ERC20 token to be withdrawn; address(0) for ETH
 //    function withdrawStagedLiquidity(address token) external nonReentrant {
-//        uint256 amount = liquidityStaging[myNetworkAddress][msg.sender][token];
+//        uint256 amount = liquidityStaging[myNetworkAddress][token];
 //        require(amount > 0, "No liquidity to withdraw");
-//        liquidityStaging[myNetworkAddress][msg.sender][token] = 0;
+//        liquidityStaging[myNetworkAddress][token] = 0;
 //
 //        if (token == address(0)) {
 //            // Withdrawing ETH
@@ -239,6 +257,123 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
 //        }
 //    }
 //
+
+
+
+
+
+
+
+
+
+
+/**
+ * @dev Adds liquidity from the staged amounts.
+ * Can only be called by the Mountain contract.
+ * @param tokenAddress The address of the token for which liquidity is being added.
+ * @param lakeBlockchainId The blockchain ID of the Lake contract.
+ * @param slippage Slippage tolerance for the liquidity addition.
+ * @param receiver The address that will receive the liquidity on the Lake side.
+ */    function addLiquidityFromStaged(
+        address tokenAddress,
+        uint256 lakeBlockchainId,
+        uint16 slippage,
+        address receiver
+    ) external onlyOwner {
+        require(terrain == TerrainType.MOUNTAIN, "Function only callable by Mountain");
+        require(receiver != address(0), "Liquidity Receiver can not be 0 address");
+
+        uint256 mountainStaged = liquidityStaging[myNetworkAddress][tokenAddress];
+        uint256 lakeStaged = liquidityStaging[lakeBlockchainId][tokenAddress];
+
+        require(mountainStaged > 0 && lakeStaged > 0, "Non-zero amounts required in staging");
+
+        // Use the new function to calculate liquidity to add for both sides
+        (uint256 mountainSide, uint256 lakeSide) = calculateLiquidityToAdd(tokenAddress, lakeBlockchainId);
+
+        // Check for slippage requirements
+        uint256 amountOut = calculateAmountOut(lakeBlockchainId, tokenAddress, mountainSide);
+        require(isWithinSlippage(amountOut, lakeSide, slippage), "Slippage limit exceeded");
+
+        // Adjust the liquidity on both sides
+        liquidityStaging[myNetworkAddress][tokenAddress] -= mountainSide;
+        liquidity[myNetworkAddress][tokenAddress] += mountainSide;
+
+        // Calculate the difference for the staging lake
+        uint256 stagingLake = lakeStaged - lakeSide;
+
+        // Update the lake side liquidity in the CCIP message
+        TransmissionLib.Liquidity memory liquidityData = TransmissionLib.Liquidity({
+            transmissionType: TransmissionLib.TransmissionType.Liquidity,
+            token: tokenAddress,
+            nonce: nonce,
+            mountain: uint120(mountainSide),
+            lake: uint120(lakeSide),
+            stagingLake: uint120(stagingLake)
+        });
+        string memory dataStr =TransmissionLib.dataToStringLiquidity(liquidityData);
+
+        // Send CCIP message
+        sendMessagePayNative(uint64(lakeBlockchainId), receiver, dataStr);
+
+        // Increment nonce for next operation
+        nonce++;
+    }
+
+
+    function isWithinSlippage(uint256 amountOut, uint256 targetAmount, uint16 slippage) internal pure returns (bool) {
+        uint256 slippageAmount = targetAmount > amountOut ? (targetAmount - amountOut) : (amountOut - targetAmount);
+        return slippageAmount <= (targetAmount * slippage / 10000); // Slippage in basis points
+    }
+
+    function calculateLiquidityToAdd(address tokenAddress, uint256 lakeBlockchainId)
+        internal
+        view
+        returns (uint256 mountainSide, uint256 lakeSide)
+    {
+        uint256 mountainStaged = liquidityStaging[myNetworkAddress][tokenAddress];
+        uint256 lakeStaged = liquidityStaging[lakeBlockchainId][tokenAddress];
+        uint256 mountainLiquidity = liquidity[myNetworkAddress][tokenAddress];
+        uint256 lakeLiquidity = liquidity[lakeBlockchainId][tokenAddress];
+
+        if (mountainLiquidity == 0 || lakeLiquidity == 0) {
+            // If either pool is empty, use the lesser of the two staged amounts for both sides
+            uint256 lesserAmount = mountainStaged < lakeStaged ? mountainStaged : lakeStaged;
+            return (lesserAmount, lesserAmount);
+        }
+
+        // Calculate the equivalent lake amount for the mountain staged amount
+        uint256 equivalentLakeAmount = (mountainStaged * lakeLiquidity) / mountainLiquidity;
+
+        // Determine the limiting side
+        if (equivalentLakeAmount < lakeStaged) {
+            // Mountain side is limiting
+            return (mountainStaged, equivalentLakeAmount);
+        } else {
+            // Lake side is limiting
+            uint256 equivalentMountainAmount = (lakeStaged * mountainLiquidity) / lakeLiquidity;
+            return (equivalentMountainAmount, lakeStaged);
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /**
      * @notice Bridges native tokens to a specified destination chain, and sends a message.
@@ -332,7 +467,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     {
 
         // todo -- we need to remove the fees first
-        // update blockchainTokenAmounts for Mountain/Lake???
+        // update liquidity for Mountain/Lake???
         // todo -- update
 
         // check if slippage is valid
@@ -490,7 +625,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
             TransmissionLib.LiquidityStaging memory myLiquidityStaging = TransmissionLib.stringToDataLiquidityStaging(s_lastReceivedText);
             // Further processing with liquidityStaging
         } else if (transmissionType == TransmissionLib.TransmissionType.Liquidity) {
-            TransmissionLib.Liquidity memory liquidity = TransmissionLib.stringToDataLiquidity(s_lastReceivedText);
+            TransmissionLib.Liquidity memory myLiquidity = TransmissionLib.stringToDataLiquidity(s_lastReceivedText);
             // Further processing with liquidity
         } else {
             revert("Unknown transmission type");
@@ -546,7 +681,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     /// @param _address address of asset (ie token). 0 for native.
     /// @return amount of asset at given blockchain
     function getAmountGivenBlockchainAndAddress(uint256 _id, address _address) public view returns (uint256) {
-        return blockchainTokenAmounts[_id][_address];
+        return liquidity[_id][_address];
     }
 
 
@@ -608,11 +743,11 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     /// @param token The address of the token (address(0) for ETH)
     /// @param amount The amount to withdraw
     function withdrawStagedLiquidity(uint256 blockchainId, address token, uint256 amount) external nonReentrant {
-        if (terrain == TerrainType.MOUNTAIN || approvedWithdrawals[blockchainId][msg.sender][token] >= amount) {
-            require(liquidityStaging[blockchainId][msg.sender][token] >= amount, "Insufficient liquidity staged");
-            liquidityStaging[blockchainId][msg.sender][token] -= amount;
+        if (terrain == TerrainType.MOUNTAIN || approvedWithdrawals[blockchainId][token] >= amount) {
+            require(liquidityStaging[blockchainId][token] >= amount, "Insufficient liquidity staged");
+            liquidityStaging[blockchainId][token] -= amount;
             if (terrain == TerrainType.LAKE) {
-                approvedWithdrawals[blockchainId][msg.sender][token] -= amount;
+                approvedWithdrawals[blockchainId][token] -= amount;
             }
 
             if (token == address(0)) {

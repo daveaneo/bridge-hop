@@ -3,6 +3,8 @@
 /* eslint-disable */
 import type * as crossChainNftMinter from "./cross-chain-nft-minter";
 export type { crossChainNftMinter };
+import type * as helpers from "./helpers";
+export type { helpers };
 import type * as utils from "./utils";
 export type { utils };
 export type { BasicMessageReceiver } from "./BasicMessageReceiver";
