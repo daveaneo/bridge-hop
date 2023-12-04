@@ -56,6 +56,8 @@ export type { SourceMinter } from "./artifacts/contracts/cross-chain-nft-minter/
 export { SourceMinter__factory } from "./factories/artifacts/contracts/cross-chain-nft-minter/SourceMinter__factory";
 export type { TestToken } from "./artifacts/contracts/helpers/TestToken";
 export { TestToken__factory } from "./factories/artifacts/contracts/helpers/TestToken__factory";
+export type { TransmissionMock } from "./artifacts/contracts/helpers/TransmissionMock";
+export { TransmissionMock__factory } from "./factories/artifacts/contracts/helpers/TransmissionMock__factory";
 export type { Mountain } from "./artifacts/contracts/Mountain";
 export { Mountain__factory } from "./factories/artifacts/contracts/Mountain__factory";
 export type { ProgrammableTokenTransfers } from "./artifacts/contracts/ProgrammableTokenTransfers";
