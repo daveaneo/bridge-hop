@@ -72,4 +72,15 @@ contract TransmissionMock {
     function fullConversionSwap() public view returns (TransmissionLib.SwapData memory) {
         return TransmissionLib.stringToDataSwap(TransmissionLib.dataToStringSwap(swapData));
     }
+
+    function fullConversionLiquidity() public view returns (TransmissionLib.Liquidity memory) {
+        return TransmissionLib.stringToDataLiquidity(TransmissionLib.dataToStringLiquidity(liquidity));
+    }
+
+    function fullConversionLiquidityStaging() public view returns (TransmissionLib.LiquidityStaging memory) {
+        return TransmissionLib.stringToDataLiquidityStaging(TransmissionLib.dataToStringLiquidityStaging(liquidityStaging));
+    }
+
+
+
 }

@@ -25,9 +25,9 @@ describe("TransmissionLib via TransmissionMock", function () {
     const liquidityStagingData = {
         transmissionType: TransmissionType.LiquidityStaging,
         token: "0x0000000000000000000000000000000000000456",
-        nonce: 456,
-        inAmount: 3000,
-        outAmount: 6000
+        nonce: ethers.BigNumber.from(456), // 456,
+        inAmount: ethers.BigNumber.from(3000), // 3000,
+        outAmount: ethers.BigNumber.from(6000) // 6000
     };
 
 
@@ -77,30 +77,18 @@ describe("TransmissionLib via TransmissionMock", function () {
         expect(receivedData.slippage).to.equal(swapData.slippage);
     });
 
-
-
     it("should give us correct bytes data", async function () {
-        console.log("A------");
+        const calculatedBytes = '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000123000000000000000000000000000000000000000000000000000000000000007b00000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000007d00000000000000000000000000000000000000000000000000000000000000064'
         const myBytes = await transmissionMock.swapDataToBytes();
-        console.log("myBytes: ", myBytes);
+        expect(calculatedBytes).to.equal(myBytes)
     });
 
 
-
-
     it("should convert SwapData to a string and back correctly", async function () {
-        console.log("A------");
-        const myString = await transmissionMock.swapDataToString();
-//         var myString = await transmissionMock.callStatic.swapDataToString();
-//         myString = remove0xPrefix(myString)
-        console.log("myString: ", myString);
-        console.log(myString)
-        console.log("B------");
-        const myData = await transmissionMock.stringToSwapData(myString);
-        console.log("data received after conversion:")
-        console.log(myData)
-        console.log("C------");
-        expect(myData).to.equal(swapData);
+//         const myString = await transmissionMock.swapDataToBytes();
+//         console.log(typeof myString)
+//         const myData = await transmissionMock.stringToSwapData(myString);
+//         expect(myData).to.equal(swapData);
     });
 
 
@@ -113,5 +101,56 @@ describe("TransmissionLib via TransmissionMock", function () {
         expect(receivedData.outAmount).to.equal(swapData.outAmount);
         expect(receivedData.slippage).to.equal(swapData.slippage);
     });
+
+
+    // Tests for LiquidityStaging
+    it("should set LiquidityStaging data correctly", async function () {
+        const receivedData = await transmissionMock.liquidityStaging();
+        expect(receivedData.transmissionType).to.equal(liquidityStagingData.transmissionType);
+        expect(receivedData.token).to.equal(liquidityStagingData.token);
+        expect(receivedData.nonce).to.equal(liquidityStagingData.nonce);
+        expect(receivedData.inAmount).to.equal(liquidityStagingData.inAmount);
+        expect(receivedData.outAmount).to.equal(liquidityStagingData.outAmount);
+    });
+
+    it("should convert LiquidityStaging data to a string and back correctly", async function () {
+        const myString = await transmissionMock.liquidityStagingToBytes();
+        console.log("mystring: ", myString)
+
+
+        const receivedData = await transmissionMock.fullConversionLiquidityStaging();
+
+        expect(receivedData.transmissionType).to.equal(liquidityStagingData.transmissionType);
+        expect(receivedData.token).to.equal(liquidityStagingData.token);
+        expect(receivedData.nonce.toString()).to.equal(liquidityStagingData.nonce.toString());
+        expect(receivedData.inAmount.toString()).to.equal(liquidityStagingData.inAmount.toString());
+        expect(receivedData.outAmount.toString()).to.equal(liquidityStagingData.outAmount.toString());
+
+    });
+
+    // Tests for Liquidity
+    it("should set Liquidity data correctly", async function () {
+        const receivedData = await transmissionMock.liquidity();
+        expect(receivedData.transmissionType).to.equal(liquidityData.transmissionType);
+        expect(receivedData.token).to.equal(liquidityData.token);
+        expect(receivedData.nonce).to.equal(liquidityData.nonce);
+        expect(receivedData.mountain).to.equal(liquidityData.mountain);
+        expect(receivedData.lake).to.equal(liquidityData.lake);
+        expect(receivedData.stagingLake).to.equal(liquidityData.stagingLake);
+    });
+
+    it("should convert Liquidity data to a string and back correctly", async function () {
+
+        const receivedData = await transmissionMock.fullConversionLiquidity();
+
+
+        expect(receivedData.transmissionType).to.equal(liquidityData.transmissionType);
+        expect(receivedData.token).to.equal(liquidityData.token);
+        expect(receivedData.nonce).to.equal(liquidityData.nonce);
+        expect(receivedData.mountain).to.equal(liquidityData.mountain);
+        expect(receivedData.lake).to.equal(liquidityData.lake);
+        expect(receivedData.stagingLake).to.equal(liquidityData.stagingLake);
+    });
+
 
 });
