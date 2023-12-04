@@ -11,6 +11,13 @@ contract TransmissionMock {
     TransmissionLib.LiquidityStaging public liquidityStaging;
     TransmissionLib.Liquidity public liquidity;
 
+
+    // Convert to string
+    function getTypeFromString(string memory myString) public pure returns (TransmissionLib.TransmissionType) {
+        return TransmissionLib.getTypeFromString(myString);
+    }
+
+
     // Setters
     function setSwapData(TransmissionLib.SwapData memory _swapData) public {
         swapData = _swapData;
@@ -79,6 +86,47 @@ contract TransmissionMock {
 
     function fullConversionLiquidityStaging() public view returns (TransmissionLib.LiquidityStaging memory) {
         return TransmissionLib.stringToDataLiquidityStaging(TransmissionLib.dataToStringLiquidityStaging(liquidityStaging));
+    }
+
+
+
+
+    // inference testing
+    function swapInferredCorrectly() public view returns (bool) {
+        if(getTypeFromString(swapDataToString())!= TransmissionLib.TransmissionType.SwapData){
+            return false;
+        }
+        return true;
+    }
+
+    function liquidityStagingInferredCorrectly() public view returns (bool) {
+        if(getTypeFromString(liquidityStagingToString())!= TransmissionLib.TransmissionType.LiquidityStaging){
+            return false;
+        }
+        return true;
+    }
+
+    function liquidityInferredCorrectly() public view returns (bool) {
+        if(getTypeFromString(liquidityToString())!= TransmissionLib.TransmissionType.Liquidity){
+            return false;
+        }
+        return true;
+    }
+
+
+
+
+    function allTypesInferredCorrectly() public view returns (bool) {
+        if(getTypeFromString(swapDataToString())!= TransmissionLib.TransmissionType.SwapData){
+            return false;
+        }
+        if(getTypeFromString(liquidityStagingToString())!= TransmissionLib.TransmissionType.LiquidityStaging){
+            return false;
+        }
+        if(getTypeFromString(liquidityToString())!= TransmissionLib.TransmissionType.Liquidity){
+            return false;
+        }
+        return true;
     }
 
 

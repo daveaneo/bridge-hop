@@ -66,90 +66,137 @@ describe("TransmissionLib via TransmissionMock", function () {
 
     });
 
-    it("should set SwapData correctly", async function () {
-        const receivedData = await transmissionMock.swapData();
+    describe("SwapData", function () {
 
-        expect(receivedData.transmissionType).to.equal(swapData.transmissionType);
-        expect(receivedData.token).to.equal(swapData.token);
-        expect(receivedData.nonce).to.equal(swapData.nonce);
-        expect(receivedData.inAmount).to.equal(swapData.inAmount);
-        expect(receivedData.outAmount).to.equal(swapData.outAmount);
-        expect(receivedData.slippage).to.equal(swapData.slippage);
+        it("should set SwapData correctly", async function () {
+            const receivedData = await transmissionMock.swapData();
+
+            expect(receivedData.transmissionType).to.equal(swapData.transmissionType);
+            expect(receivedData.token).to.equal(swapData.token);
+            expect(receivedData.nonce).to.equal(swapData.nonce);
+            expect(receivedData.inAmount).to.equal(swapData.inAmount);
+            expect(receivedData.outAmount).to.equal(swapData.outAmount);
+            expect(receivedData.slippage).to.equal(swapData.slippage);
+        });
+
+        it("should give us correct bytes data", async function () {
+            const calculatedBytes = '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000123000000000000000000000000000000000000000000000000000000000000007b00000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000007d00000000000000000000000000000000000000000000000000000000000000064'
+            const myBytes = await transmissionMock.swapDataToBytes();
+            expect(calculatedBytes).to.equal(myBytes)
+        });
+
+
+        it("should convert SwapData to a string and back correctly", async function () {
+    //         const myString = await transmissionMock.swapDataToBytes();
+    //         console.log(typeof myString)
+    //         const myData = await transmissionMock.stringToSwapData(myString);
+    //         expect(myData).to.equal(swapData);
+        });
+
+
+        it("should convert SwapData to a string and back correctly-full", async function () {
+            const receivedData = await transmissionMock.fullConversionSwap();
+            expect(receivedData.transmissionType).to.equal(swapData.transmissionType);
+            expect(receivedData.token).to.equal(swapData.token);
+            expect(receivedData.nonce).to.equal(swapData.nonce);
+            expect(receivedData.inAmount).to.equal(swapData.inAmount);
+            expect(receivedData.outAmount).to.equal(swapData.outAmount);
+            expect(receivedData.slippage).to.equal(swapData.slippage);
+        });
+
+
+        // todo -- this test isn't working and it is likely do to datatypes and conversions
+        it("Correct type is assertained from string", async function () {
+//             const calculatedBytes = '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000123000000000000000000000000000000000000000000000000000000000000007b00000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000007d00000000000000000000000000000000000000000000000000000000000000064'
+//
+//             const myBytes = await transmissionMock.swapDataToBytes();
+//             const myString = await transmissionMock.swapDataToString();
+//             const myType = await transmissionMock.getTypeFromString(myBytes);
+//             expect(getTypeFromString).to.equal(TransmissionType.SwapData);
+
+        });
+
+        it("Type inferred correctly", async function () {
+            const res = await transmissionMock.swapInferredCorrectly();
+            expect(res).to.equal(true);
+        });
+
+        it("All types inferred correctly", async function () {
+            const res = await transmissionMock.allTypesInferredCorrectly();
+            expect(res).to.equal(true);
+        });
+
+
     });
 
-    it("should give us correct bytes data", async function () {
-        const calculatedBytes = '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000123000000000000000000000000000000000000000000000000000000000000007b00000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000007d00000000000000000000000000000000000000000000000000000000000000064'
-        const myBytes = await transmissionMock.swapDataToBytes();
-        expect(calculatedBytes).to.equal(myBytes)
+    describe("LiquidityStaging", function () {
+        // Tests for LiquidityStaging
+        it("should set LiquidityStaging data correctly", async function () {
+            const receivedData = await transmissionMock.liquidityStaging();
+            expect(receivedData.transmissionType).to.equal(liquidityStagingData.transmissionType);
+            expect(receivedData.token).to.equal(liquidityStagingData.token);
+            expect(receivedData.nonce).to.equal(liquidityStagingData.nonce);
+            expect(receivedData.inAmount).to.equal(liquidityStagingData.inAmount);
+            expect(receivedData.outAmount).to.equal(liquidityStagingData.outAmount);
+        });
+
+        it("should give us correct bytes data", async function () {
+            const calculatedBytes = '0x0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000078900000000000000000000000000000000000000000000000000000000000003150000000000000000000000000000000000000000000000000000000000000fa0000000000000000000000000000000000000000000000000000000000000138800000000000000000000000000000000000000000000000000000000000007d0'
+            const myBytes = await transmissionMock.liquidityToBytes();
+            expect(calculatedBytes).to.equal(myBytes)
+        });
+
+        it("should convert LiquidityStaging data to a string and back correctly", async function () {
+            const receivedData = await transmissionMock.fullConversionLiquidityStaging();
+
+            expect(receivedData.transmissionType).to.equal(liquidityStagingData.transmissionType);
+            expect(receivedData.token).to.equal(liquidityStagingData.token);
+            expect(receivedData.nonce.toString()).to.equal(liquidityStagingData.nonce.toString());
+            expect(receivedData.inAmount.toString()).to.equal(liquidityStagingData.inAmount.toString());
+            expect(receivedData.outAmount.toString()).to.equal(liquidityStagingData.outAmount.toString());
+
+        });
+
+        it("Type inferred correctly", async function () {
+            const res = await transmissionMock.liquidityStagingInferredCorrectly();
+            expect(res).to.equal(true);
+        });
     });
 
+    describe("Liquidity", function () {
+        // Tests for Liquidity
+        it("should set Liquidity data correctly", async function () {
+            const receivedData = await transmissionMock.liquidity();
+            expect(receivedData.transmissionType).to.equal(liquidityData.transmissionType);
+            expect(receivedData.token).to.equal(liquidityData.token);
+            expect(receivedData.nonce).to.equal(liquidityData.nonce);
+            expect(receivedData.mountain).to.equal(liquidityData.mountain);
+            expect(receivedData.lake).to.equal(liquidityData.lake);
+            expect(receivedData.stagingLake).to.equal(liquidityData.stagingLake);
+        });
 
-    it("should convert SwapData to a string and back correctly", async function () {
-//         const myString = await transmissionMock.swapDataToBytes();
-//         console.log(typeof myString)
-//         const myData = await transmissionMock.stringToSwapData(myString);
-//         expect(myData).to.equal(swapData);
-    });
+        it("should give us correct bytes data", async function () {
+            const calculatedBytes = '0x0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000045600000000000000000000000000000000000000000000000000000000000001c80000000000000000000000000000000000000000000000000000000000000bb80000000000000000000000000000000000000000000000000000000000001770'
+            const myBytes = await transmissionMock.liquidityStagingToBytes();
+            expect(calculatedBytes).to.equal(myBytes)
+        });
 
+        it("should convert Liquidity data to a string and back correctly", async function () {
+            const receivedData = await transmissionMock.fullConversionLiquidity();
 
-    it("should convert SwapData to a string and back correctly-full", async function () {
-        const receivedData = await transmissionMock.fullConversionSwap();
-        expect(receivedData.transmissionType).to.equal(swapData.transmissionType);
-        expect(receivedData.token).to.equal(swapData.token);
-        expect(receivedData.nonce).to.equal(swapData.nonce);
-        expect(receivedData.inAmount).to.equal(swapData.inAmount);
-        expect(receivedData.outAmount).to.equal(swapData.outAmount);
-        expect(receivedData.slippage).to.equal(swapData.slippage);
-    });
+            expect(receivedData.transmissionType).to.equal(liquidityData.transmissionType);
+            expect(receivedData.token).to.equal(liquidityData.token);
+            expect(receivedData.nonce).to.equal(liquidityData.nonce);
+            expect(receivedData.mountain).to.equal(liquidityData.mountain);
+            expect(receivedData.lake).to.equal(liquidityData.lake);
+            expect(receivedData.stagingLake).to.equal(liquidityData.stagingLake);
+        });
 
+        it("Type inferred correctly", async function () {
+            const res = await transmissionMock.liquidityInferredCorrectly();
+            expect(res).to.equal(true);
+        });
 
-    // Tests for LiquidityStaging
-    it("should set LiquidityStaging data correctly", async function () {
-        const receivedData = await transmissionMock.liquidityStaging();
-        expect(receivedData.transmissionType).to.equal(liquidityStagingData.transmissionType);
-        expect(receivedData.token).to.equal(liquidityStagingData.token);
-        expect(receivedData.nonce).to.equal(liquidityStagingData.nonce);
-        expect(receivedData.inAmount).to.equal(liquidityStagingData.inAmount);
-        expect(receivedData.outAmount).to.equal(liquidityStagingData.outAmount);
-    });
-
-    it("should convert LiquidityStaging data to a string and back correctly", async function () {
-        const myString = await transmissionMock.liquidityStagingToBytes();
-        console.log("mystring: ", myString)
-
-
-        const receivedData = await transmissionMock.fullConversionLiquidityStaging();
-
-        expect(receivedData.transmissionType).to.equal(liquidityStagingData.transmissionType);
-        expect(receivedData.token).to.equal(liquidityStagingData.token);
-        expect(receivedData.nonce.toString()).to.equal(liquidityStagingData.nonce.toString());
-        expect(receivedData.inAmount.toString()).to.equal(liquidityStagingData.inAmount.toString());
-        expect(receivedData.outAmount.toString()).to.equal(liquidityStagingData.outAmount.toString());
-
-    });
-
-    // Tests for Liquidity
-    it("should set Liquidity data correctly", async function () {
-        const receivedData = await transmissionMock.liquidity();
-        expect(receivedData.transmissionType).to.equal(liquidityData.transmissionType);
-        expect(receivedData.token).to.equal(liquidityData.token);
-        expect(receivedData.nonce).to.equal(liquidityData.nonce);
-        expect(receivedData.mountain).to.equal(liquidityData.mountain);
-        expect(receivedData.lake).to.equal(liquidityData.lake);
-        expect(receivedData.stagingLake).to.equal(liquidityData.stagingLake);
-    });
-
-    it("should convert Liquidity data to a string and back correctly", async function () {
-
-        const receivedData = await transmissionMock.fullConversionLiquidity();
-
-
-        expect(receivedData.transmissionType).to.equal(liquidityData.transmissionType);
-        expect(receivedData.token).to.equal(liquidityData.token);
-        expect(receivedData.nonce).to.equal(liquidityData.nonce);
-        expect(receivedData.mountain).to.equal(liquidityData.mountain);
-        expect(receivedData.lake).to.equal(liquidityData.lake);
-        expect(receivedData.stagingLake).to.equal(liquidityData.stagingLake);
     });
 
 

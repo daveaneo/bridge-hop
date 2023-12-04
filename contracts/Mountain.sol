@@ -619,14 +619,17 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
 
         TransmissionLib.TransmissionType transmissionType = TransmissionLib.getTypeFromString(s_lastReceivedText);
         if (transmissionType == TransmissionLib.TransmissionType.SwapData) {
-            TransmissionLib.SwapData memory swapData = TransmissionLib.stringToDataSwap(s_lastReceivedText);
+            TransmissionLib.SwapData memory mySwapData = TransmissionLib.stringToDataSwap(s_lastReceivedText);
             // Further processing with swapData
+            mySwapData; // todo;
         } else if (transmissionType == TransmissionLib.TransmissionType.LiquidityStaging) {
             TransmissionLib.LiquidityStaging memory myLiquidityStaging = TransmissionLib.stringToDataLiquidityStaging(s_lastReceivedText);
             // Further processing with liquidityStaging
+            myLiquidityStaging; // todo;
         } else if (transmissionType == TransmissionLib.TransmissionType.Liquidity) {
             TransmissionLib.Liquidity memory myLiquidity = TransmissionLib.stringToDataLiquidity(s_lastReceivedText);
             // Further processing with liquidity
+            myLiquidity; // todo;
         } else {
             revert("Unknown transmission type");
         }
