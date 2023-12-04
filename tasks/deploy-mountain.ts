@@ -8,6 +8,8 @@ import { LINK_ADDRESSES, routerConfig } from "./constants";
 
 task(`deploy-mountain`, `Deploys Mountain contracts on...`)
     .addOptionalParam(`router`, `The address of the Router contract`)
+//     .addFlag("m", "Deploy as a mountain")
+    .addOptionalParam("terrain", "Specify terrain type: lake (0) or mountain (1)", "0")
     .setAction(async (taskArguments: TaskArguments, hre: HardhatRuntimeEnvironment) => {
         const routerAddress = taskArguments.router ? taskArguments.router : getRouterConfig(hre.network.name).address;
 
@@ -18,8 +20,19 @@ task(`deploy-mountain`, `Deploys Mountain contracts on...`)
         const wallet = new Wallet(privateKey);
         const deployer = wallet.connect(provider);
         var myNetworkChainlinkId = routerConfig[networkName].chainSelector;
-        var linkAddress = taskArguments.link ? taskArguments.link : LINK_ADDRESSES[hre.network.name]
+        var linkAddress = taskArguments.link ? taskArguments.link : LINK_ADDRESSES[hre.network.name];
+        var terrainType = taskArguments.terrain == "1" ? 1 : 0;
+
         const spinner: Spinner = new Spinner();
+
+//         // Check if -m flag is provided
+//         if (taskArguments.m) {
+//             taskArguments.terrain = "1";
+//         }
+//
+//         var terrainType = taskArguments.terrain;
+
+        console.log("terrainType: ", terrainType);
 
         console.log('myNetworkChainlinkId: ', myNetworkChainlinkId);
 
@@ -43,7 +56,7 @@ task(`deploy-mountain`, `Deploys Mountain contracts on...`)
                 TransmissionLib: transmissionLib.address,
             },
         });
-        const mountain = await mountainFactory.deploy(routerAddress, linkAddress, 1, myNetworkChainlinkId);
+        const mountain = await mountainFactory.deploy(routerAddress, linkAddress, terrainType, myNetworkChainlinkId);
         await mountain.deployed();
 
         spinner.stop();
@@ -53,7 +66,7 @@ task(`deploy-mountain`, `Deploys Mountain contracts on...`)
         await sleep(60 * 1000)
         await mountain.deployTransaction.wait(); // Wait for transaction to be mined
 
-        const verRes = await verifyContract(mountain.address, "contracts/Mountain.sol:Mountain", [routerAddress, linkAddress, 1, myNetworkChainlinkId]);
+        const verRes = await verifyContract(mountain.address, "contracts/Mountain.sol:Mountain", [routerAddress, linkAddress, terrainType, myNetworkChainlinkId]);
 
         if(!verRes){
             console.log("Verified!");
