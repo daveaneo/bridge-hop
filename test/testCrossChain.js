@@ -111,7 +111,7 @@ describe("Mountain Contract", function () {
       });
     });
 
-    describe("Stage and withdraw 'ETH' on Mountain", function () {
+    it("Stage and withdraw 'ETH' on Mountain", async function () {
           let tx = await mountain.stageLiquidity(zeroAddress,amountToStage, {value:amountToStage});
           let txReceipt = await tx.wait();
 
@@ -122,7 +122,7 @@ describe("Mountain Contract", function () {
           expect(finalStagedAmount).to.equal(0);
     });
 
-    describe("Stage and withdraw 'ETH' on Lake", function () {
+    it("Stage and withdraw 'ETH' on Lake", async function () {
           let tx = await lake.stageLiquidity(zeroAddress,amountToStage, {value:amountToStage});
           let txReceipt = await tx.wait();
 
