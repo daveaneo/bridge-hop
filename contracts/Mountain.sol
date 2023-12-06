@@ -74,7 +74,6 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         address receiver
     );
 
-
     enum TerrainType {  LAKE, MOUNTAIN }
 //    enum TransmissionLib.TransmissionType {  SwapData, LiquidityStaging, Liquidity }
 
@@ -162,46 +161,43 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         amountOut = y - newY;
         return amountOut;
     }
-
-
-    function calculateCCIPFee(
-        TransmissionLib.TransmissionType structureType,
-        bytes memory transmissionType,
-        address _receiver,
-        uint64 _destinationChainSelector
-    ) external view returns (uint256 fee) {
-        string memory _text;
-
-        // Determine which structure to use and create the text
-        if (structureType == TransmissionLib.TransmissionType.SwapData) {
-            TransmissionLib.SwapData memory swapData = abi.decode(transmissionType, (TransmissionLib.SwapData));
-            _text = TransmissionLib.dataToStringSwap(swapData);
-        } else if (structureType == TransmissionLib.TransmissionType.LiquidityStaging) {
-            TransmissionLib.LiquidityStaging memory liquidityStaging = abi.decode(transmissionType, (TransmissionLib.LiquidityStaging));
-            _text = TransmissionLib.dataToStringLiquidityStaging(liquidityStaging);
-        } else if (structureType == TransmissionLib.TransmissionType.Liquidity) {
-            TransmissionLib.Liquidity memory liquidity = abi.decode(transmissionType, (TransmissionLib.Liquidity));
-            _text = TransmissionLib.dataToStringLiquidity(liquidity);
-        } else {
-            revert("Invalid structure type");
-        }
-
-        // Create an EVM2AnyMessage struct
-        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
-            _receiver,
-            _text,
-            address(0) // Assuming fees are paid in the native currency
-        );
-
-        // Calculate the fee
-        IRouterClient router = IRouterClient(this.getRouter());
-        fee = router.getFee(_destinationChainSelector, evm2AnyMessage);
-
-        return fee;
-    }
-
-
-
+//
+//
+//    function calculateCCIPFee(
+//        TransmissionLib.TransmissionType structureType,
+//        bytes memory transmissionType,
+//        address _receiver,
+//        uint64 _destinationChainSelector
+//    ) external view returns (uint256 fee) {
+//        string memory _text;
+//
+//        // Determine which structure to use and create the text
+//        if (structureType == TransmissionLib.TransmissionType.SwapData) {
+//            TransmissionLib.SwapData memory swapData = abi.decode(transmissionType, (TransmissionLib.SwapData));
+//            _text = TransmissionLib.dataToStringSwap(swapData);
+//        } else if (structureType == TransmissionLib.TransmissionType.LiquidityStaging) {
+//            TransmissionLib.LiquidityStaging memory liquidityStaging = abi.decode(transmissionType, (TransmissionLib.LiquidityStaging));
+//            _text = TransmissionLib.dataToStringLiquidityStaging(liquidityStaging);
+//        } else if (structureType == TransmissionLib.TransmissionType.Liquidity) {
+//            TransmissionLib.Liquidity memory liquidity = abi.decode(transmissionType, (TransmissionLib.Liquidity));
+//            _text = TransmissionLib.dataToStringLiquidity(liquidity);
+//        } else {
+//            revert("Invalid structure type");
+//        }
+//
+//        // Create an EVM2AnyMessage struct
+//        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
+//            _receiver,
+//            _text,
+//            address(0) // Assuming fees are paid in the native currency
+//        );
+//
+//        // Calculate the fee
+//        IRouterClient router = IRouterClient(this.getRouter());
+//        fee = router.getFee(_destinationChainSelector, evm2AnyMessage);
+//
+//        return fee;
+//    }
 
 
 
@@ -554,59 +550,60 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         messageId = sendMessagePayNative(_destinationChainSelector, _receiver, _text);
     }
 
-
-    /// @notice Sends data to receiver on the destination chain.
-    /// @notice Pay for fees in LINK.
-    /// @dev Assumes your contract has sufficient LINK.
-    /// @param _destinationChainSelector The identifier (aka selector) for the destination blockchain.
-    /// @param _receiver The address of the recipient on the destination blockchain.
-    /// @param _text The text to be sent.
-    /// @return messageId The ID of the CCIP message that was sent.
-    function sendMessagePayLINK(
-        uint64 _destinationChainSelector,
-        address _receiver,
-        string memory _text
-    )
-        internal
-        onlyOwner
-        onlyAllowlistedDestinationChain(_destinationChainSelector)
-        returns (bytes32 messageId)
-    {
-        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
-        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
-            _receiver,
-            _text,
-            address(s_linkToken)
-        );
-
-        // Initialize a router client instance to interact with cross-chain router
-        IRouterClient router = IRouterClient(this.getRouter());
-
-        // Get the fee required to send the CCIP message
-        uint256 fees = router.getFee(_destinationChainSelector, evm2AnyMessage);
-
-        if (fees > s_linkToken.balanceOf(address(this)))
-            revert NotEnoughBalance(s_linkToken.balanceOf(address(this)), fees);
-
-        // approve the Router to transfer LINK tokens on contract's behalf. It will spend the fees in LINK
-        s_linkToken.approve(address(router), fees);
-
-        // Send the CCIP message through the router and store the returned CCIP message ID
-        messageId = router.ccipSend(_destinationChainSelector, evm2AnyMessage);
-
-        // Emit an event with message details
-        emit MessageSent(
-            messageId,
-            _destinationChainSelector,
-            _receiver,
-            _text,
-            address(s_linkToken),
-            fees
-        );
-
-        // Return the CCIP message ID
-        return messageId;
-    }
+//
+//
+//    /// @notice Sends data to receiver on the destination chain.
+//    /// @notice Pay for fees in LINK.
+//    /// @dev Assumes your contract has sufficient LINK.
+//    /// @param _destinationChainSelector The identifier (aka selector) for the destination blockchain.
+//    /// @param _receiver The address of the recipient on the destination blockchain.
+//    /// @param _text The text to be sent.
+//    /// @return messageId The ID of the CCIP message that was sent.
+//    function sendMessagePayLINK(
+//        uint64 _destinationChainSelector,
+//        address _receiver,
+//        string memory _text
+//    )
+//        internal
+//        onlyOwner
+//        onlyAllowlistedDestinationChain(_destinationChainSelector)
+//        returns (bytes32 messageId)
+//    {
+//        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
+//        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
+//            _receiver,
+//            _text,
+//            address(s_linkToken)
+//        );
+//
+//        // Initialize a router client instance to interact with cross-chain router
+//        IRouterClient router = IRouterClient(this.getRouter());
+//
+//        // Get the fee required to send the CCIP message
+//        uint256 fees = router.getFee(_destinationChainSelector, evm2AnyMessage);
+//
+//        if (fees > s_linkToken.balanceOf(address(this)))
+//            revert NotEnoughBalance(s_linkToken.balanceOf(address(this)), fees);
+//
+//        // approve the Router to transfer LINK tokens on contract's behalf. It will spend the fees in LINK
+//        s_linkToken.approve(address(router), fees);
+//
+//        // Send the CCIP message through the router and store the returned CCIP message ID
+//        messageId = router.ccipSend(_destinationChainSelector, evm2AnyMessage);
+//
+//        // Emit an event with message details
+//        emit MessageSent(
+//            messageId,
+//            _destinationChainSelector,
+//            _receiver,
+//            _text,
+//            address(s_linkToken),
+//            fees
+//        );
+//
+//        // Return the CCIP message ID
+//        return messageId;
+//    }
 
     /// @notice Sends data to receiver on the destination chain.
     /// @notice Pay for fees in native gas.
@@ -742,7 +739,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     /// @param _id Network Id
     /// @param _address address of asset (ie token). 0 for native.
     /// @return amount of asset at given blockchain
-    function getAmountGivenBlockchainAndAddress(uint256 _id, address _address) public view returns (uint256) {
+    function getAmountGivenBlockchainAndAddress(uint256 _id, address _address) external view returns (uint256) {
         return liquidity[_id][_address];
     }
 

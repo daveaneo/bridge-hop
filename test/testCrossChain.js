@@ -1,6 +1,8 @@
 //require('dotenv').config();
+const { TransmissionType } = require('./util');
 const dotenvenc = require('@chainlink/env-enc');
 dotenvenc.config();
+
 
 const hre = require("hardhat");
 const { ethers } = require('ethers');
@@ -11,6 +13,9 @@ const ethereumContractAddress = '0x707dE55f7E38eA2c61C553666a0eba7f4cC2f4d5'
 const avalancheContractAddress = '0x8c5179dfec1C590C59E6607b73cfd0891fa59Bf5'
 const mountainChainSelector = ethers.BigNumber.from('16015286601757825753');
 const lakeChainSelector = ethers.BigNumber.from('14767482510784806043');
+
+const ethereumTransmissionLibAddress = '0x707dE55f7E38eA2c61C553666a0eba7f4cC2f4d5'
+const avalancheRouter = "0x554472a2720e5e7d5d3c817529aba05eed5f82d8";
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
@@ -28,10 +33,10 @@ const walletAvax = new ethers.Wallet(process.env.PRIVATE_KEY, avalancheProvider)
 var mountain, lake;
 
 
-
 const swapData = {
     transmissionType: TransmissionType.SwapData,
     token: "0x0000000000000000000000000000000000000123",
+    beneficiary: "0x6ADe6a2BDfBDa76C4555005eE7Dd7DcDE571D2a8",
     nonce: 123,
     inAmount: 1000,
     outAmount: 2000,
@@ -41,6 +46,7 @@ const swapData = {
 const liquidityStagingData = {
     transmissionType: TransmissionType.LiquidityStaging,
     token: "0x0000000000000000000000000000000000000456",
+    beneficiary: "0x6ADe6a2BDfBDa76C4555005eE7Dd7DcDE571D2a8",
     nonce: ethers.BigNumber.from(456), // 456,
     inAmount: ethers.BigNumber.from(3000), // 3000,
     outAmount: ethers.BigNumber.from(6000) // 6000
@@ -50,12 +56,12 @@ const liquidityStagingData = {
 const liquidityData = {
     transmissionType: TransmissionType.Liquidity,
     token: "0x0000000000000000000000000000000000000789",
+    beneficiary: "0x6ADe6a2BDfBDa76C4555005eE7Dd7DcDE571D2a8",
     nonce: 789,
     mountain: 4000,
     lake: 5000,
     stagingLake: 2000
 };
-
 
 
 async function initialSetup() {
@@ -65,6 +71,11 @@ async function initialSetup() {
   const mountainAbi = mountainContract.abi;
   mountain = new ethers.Contract(ethereumContractAddress, mountainAbi, walletEth);
   lake = new ethers.Contract(avalancheContractAddress, mountainAbi, walletAvax);
+
+  const transmissionLibContract = await hre.artifacts.readArtifact("TransmissionLib");
+  const transmissionLibAbi = transmissionLibContract.abi;
+  transmissionLib = new ethers.Contract(ethereumTransmissionLibAddress, transmissionLibAbi, walletEth);
+
 
   // if mountainInfo not set on Lake, set it.
   const {blockchainId, contractAddress} = await lake.getMountainInfo();
@@ -77,8 +88,9 @@ async function initialSetup() {
   }
 }
 
-describe("Mountain Contract", function () {
+describe("Test Live values on Mountain Contract", function () {
   // Setup providers for different networks
+    const amountToStage = 100000;
 
     beforeEach(async function () {
         await initialSetup();
@@ -114,6 +126,9 @@ describe("Mountain Contract", function () {
     });
 
     describe("Lake setup is correct", function () {
+//      const amountToStage = 100000;
+
+
       it("Lake is a lake:", async function () {
           const terrain = await lake.terrain();
           expect(terrain).to.equal(0);
@@ -146,11 +161,12 @@ describe("Mountain Contract", function () {
           let txReceipt = await tx.wait();
 
           let stagedAmount = await mountain.liquidityStaging(mountainChainSelector, zeroAddress)
-          tx = await mountain.withdrawStagedLiquidity(mountainChainSelector, stagedAmount);
+          tx = await mountain.withdrawStagedLiquidity(mountainChainSelector, zeroAddress, stagedAmount);
+          txReceipt = await tx.wait();
 
           let finalStagedAmount = await mountain.liquidityStaging(mountainChainSelector, zeroAddress)
           expect(finalStagedAmount).to.equal(0);
-    });
+    }).timeout(90000);;
 
     it("Stage and withdraw 'ETH' on Lake", async function () {
           let tx = await lake.stageLiquidity(zeroAddress,amountToStage, {value:amountToStage});
@@ -167,26 +183,28 @@ describe("Mountain Contract", function () {
     it("Can estimate fees", async function () {
         // Encode the SwapData into bytes
         const encodedSwapData = ethers.utils.defaultAbiCoder.encode(
-            ["tuple(uint8 transmissionType, address token, uint88 nonce, uint120 inAmount, uint120 outAmount, uint16 slippage)"],
+            ["tuple(uint8 transmissionType, address token, address beneficiary, uint88 nonce, uint120 inAmount, uint120 outAmount, uint16 slippage)"],
             [swapData]
         );
 
         // Call the function
-        const receiver = "0xReceiverAddress";
-        const destinationChainSelector = 123; // example chain selector
-        const fee = await contract.calculateCCIPFee(
+        const receiver = mountain.address;
+        const destinationChainSelector = mountainChainSelector; // example chain selector
+        const fee = await transmissionLib.calculateCCIPFee(
             0, // 0 for SwapData, adjust for other types
             encodedSwapData,
             avalancheContractAddress,
-            mountainChainSelector
+            mountainChainSelector,
+            avalancheRouter
         );
 
         console.log("Calculated Fee:", fee.toString());
+    });
 });
 
 
 
-describe("Full Bridging", function () {
+describe("Full Bridging Live Test", function () {
   // Setup providers for different networks
 
     beforeEach(async function () {

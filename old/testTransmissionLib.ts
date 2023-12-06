@@ -2,13 +2,15 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 import { TransmissionType } from './util.js';
 
+/// removed this testing script because of difficulties intereacting with it. Now using testTrasmissionMock
+
 // Your test code...
 
 
 // npx hardhat test test/TransmissionLib.test.js
 
 
-describe("TransmissionLib", function () {
+describe("Test TransmissionLib", function () {
     var lib;
 
 //     const TransmissionType = {
@@ -19,13 +21,15 @@ describe("TransmissionLib", function () {
 
 
     const swapData = {
-            transmissionType: TransmissionType.SwapData, // SwapData
-            token: "0x0000000000000000000000000000000000000123",
-            nonce: 123,
-            inAmount: 1000,
-            outAmount: 2000,
-            slippage: 100
+        transmissionType: TransmissionType.SwapData,
+        token: "0x0000000000000000000000000000000000000123",
+        beneficiary: "0x6ADe6a2BDfBDa76C4555005eE7Dd7DcDE571D2a8",
+        nonce: 123,
+        inAmount: 1000,
+        outAmount: 2000,
+        slippage: 100
     };
+
 
 
 
@@ -37,30 +41,31 @@ describe("TransmissionLib", function () {
 
 
     it("should correctly convert SwapData to and from a string--hardcoded", async function () {
-        const hardcodedData = {
-            TransmissionType: 2, // Directly using the integer value for SwapData
-            token: "0x0000000000000000000000000000000000000123",
-            nonce: 123,
-            inAmount: 1000,
-            outAmount: 2000,
-            slippage: 100
-        };
-
-//         const dataStr = await lib.dataToStringSwap(1,2,3,4,5,6);
-//         console.log(dataStr);
         console.log("a--")
-        const dataStr = await lib.dataToStringSwap(hardcodedData);
+        const encodedSwapData = ethers.utils.defaultAbiCoder.encode(
+            ["tuple(uint8 transmissionType, address token, address beneficiary, uint88 nonce, uint120 inAmount, uint120 outAmount, uint16 slippage)"],
+            [swapData]
+        );
+        console.log("a2--")
+
+//         console.log("swap Data: ")
+//         console.log(swapData);
+//         console.log("encodedSwapData: ")
+//         console.log(encodedSwapData);
+
+//         const dataStr = await lib.dataToStringSwap(swapData);
+        const dataStr = await lib.dataToStringSwap(swapData);
         console.log("b--")
         console.log(dataStr)
         const decodedData = await lib.stringToDataSwap(dataStr);
         console.log("c--")
         console.log(decodedData)
 
-        expect(decodedData.token).to.equal(hardcodedData.token);
-        expect(decodedData.nonce).to.equal(hardcodedData.nonce);
-        expect(decodedData.inAmount).to.equal(hardcodedData.inAmount);
-        expect(decodedData.outAmount).to.equal(hardcodedData.outAmount);
-        expect(decodedData.slippage).to.equal(hardcodedData.slippage);
+        expect(decodedData.token).to.equal(swapData.token);
+        expect(decodedData.nonce).to.equal(swapData.nonce);
+        expect(decodedData.inAmount).to.equal(swapData.inAmount);
+        expect(decodedData.outAmount).to.equal(swapData.outAmount);
+        expect(decodedData.slippage).to.equal(swapData.slippage);
     });
 
 

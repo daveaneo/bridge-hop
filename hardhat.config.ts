@@ -16,6 +16,13 @@ const AVALANCHE_FUJI_RPC_URL = process.env.AVALANCHE_FUJI_RPC_URL;
 
 const config: HardhatUserConfig = {
   solidity: '0.8.19',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 100000,
+      },
+      viaIR: true,
+    },
     etherscan: {
 //     apiKey: process.env.ETHERSCAN_API,
       apiKey: {

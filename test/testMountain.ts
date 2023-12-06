@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 import { LINK_ADDRESSES, routerConfig } from "../tasks/constants";
 import { getPrivateKey, getProviderRpcUrl, getRouterConfig, sleep, verifyContract } from "../tasks/utils";
 
-describe("Mountain Contract", function () {
+describe("Test Mountain Contract", function () {
   var Mountain, tokenFactory;
   var mountain, lake, token;
   var owner, addr1, addr2;
