@@ -28,6 +28,36 @@ const walletAvax = new ethers.Wallet(process.env.PRIVATE_KEY, avalancheProvider)
 var mountain, lake;
 
 
+
+const swapData = {
+    transmissionType: TransmissionType.SwapData,
+    token: "0x0000000000000000000000000000000000000123",
+    nonce: 123,
+    inAmount: 1000,
+    outAmount: 2000,
+    slippage: 100
+};
+
+const liquidityStagingData = {
+    transmissionType: TransmissionType.LiquidityStaging,
+    token: "0x0000000000000000000000000000000000000456",
+    nonce: ethers.BigNumber.from(456), // 456,
+    inAmount: ethers.BigNumber.from(3000), // 3000,
+    outAmount: ethers.BigNumber.from(6000) // 6000
+};
+
+
+const liquidityData = {
+    transmissionType: TransmissionType.Liquidity,
+    token: "0x0000000000000000000000000000000000000789",
+    nonce: 789,
+    mountain: 4000,
+    lake: 5000,
+    stagingLake: 2000
+};
+
+
+
 async function initialSetup() {
   // Load the contract's artifacts, which includes the ABI
   const mountainContract = await hre.artifacts.readArtifact("Mountain");
@@ -134,6 +164,24 @@ describe("Mountain Contract", function () {
     });
 
 
+    it("Can estimate fees", async function () {
+        // Encode the SwapData into bytes
+        const encodedSwapData = ethers.utils.defaultAbiCoder.encode(
+            ["tuple(uint8 transmissionType, address token, uint88 nonce, uint120 inAmount, uint120 outAmount, uint16 slippage)"],
+            [swapData]
+        );
+
+        // Call the function
+        const receiver = "0xReceiverAddress";
+        const destinationChainSelector = 123; // example chain selector
+        const fee = await contract.calculateCCIPFee(
+            0, // 0 for SwapData, adjust for other types
+            encodedSwapData,
+            avalancheContractAddress,
+            mountainChainSelector
+        );
+
+        console.log("Calculated Fee:", fee.toString());
 });
 
 

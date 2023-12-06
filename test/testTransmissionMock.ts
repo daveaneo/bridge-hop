@@ -16,6 +16,7 @@ describe("TransmissionLib via TransmissionMock", function () {
     const swapData = {
         transmissionType: TransmissionType.SwapData,
         token: "0x0000000000000000000000000000000000000123",
+        beneficiary: "0x6ADe6a2BDfBDa76C4555005eE7Dd7DcDE571D2a8",
         nonce: 123,
         inAmount: 1000,
         outAmount: 2000,
@@ -25,6 +26,7 @@ describe("TransmissionLib via TransmissionMock", function () {
     const liquidityStagingData = {
         transmissionType: TransmissionType.LiquidityStaging,
         token: "0x0000000000000000000000000000000000000456",
+        beneficiary: "0x6ADe6a2BDfBDa76C4555005eE7Dd7DcDE571D2a8",
         nonce: ethers.BigNumber.from(456), // 456,
         inAmount: ethers.BigNumber.from(3000), // 3000,
         outAmount: ethers.BigNumber.from(6000) // 6000
@@ -34,6 +36,7 @@ describe("TransmissionLib via TransmissionMock", function () {
     const liquidityData = {
         transmissionType: TransmissionType.Liquidity,
         token: "0x0000000000000000000000000000000000000789",
+        beneficiary: "0x6ADe6a2BDfBDa76C4555005eE7Dd7DcDE571D2a8",
         nonce: 789,
         mountain: 4000,
         lake: 5000,
@@ -73,6 +76,7 @@ describe("TransmissionLib via TransmissionMock", function () {
 
             expect(receivedData.transmissionType).to.equal(swapData.transmissionType);
             expect(receivedData.token).to.equal(swapData.token);
+            expect(receivedData.beneficiary).to.equal(swapData.beneficiary);
             expect(receivedData.nonce).to.equal(swapData.nonce);
             expect(receivedData.inAmount).to.equal(swapData.inAmount);
             expect(receivedData.outAmount).to.equal(swapData.outAmount);
@@ -80,17 +84,17 @@ describe("TransmissionLib via TransmissionMock", function () {
         });
 
         it("should give us correct bytes data", async function () {
-            const calculatedBytes = '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000123000000000000000000000000000000000000000000000000000000000000007b00000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000007d00000000000000000000000000000000000000000000000000000000000000064'
+            const calculatedBytes = '0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001230000000000000000000000006ade6a2bdfbda76c4555005ee7dd7dcde571d2a8000000000000000000000000000000000000000000000000000000000000007b00000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000007d00000000000000000000000000000000000000000000000000000000000000064'
             const myBytes = await transmissionMock.swapDataToBytes();
             expect(calculatedBytes).to.equal(myBytes)
         });
 
 
         it("should convert SwapData to a string and back correctly", async function () {
-    //         const myString = await transmissionMock.swapDataToBytes();
-    //         console.log(typeof myString)
-    //         const myData = await transmissionMock.stringToSwapData(myString);
-    //         expect(myData).to.equal(swapData);
+            const myString = await transmissionMock.swapDataToBytes();
+            console.log(typeof myString)
+            const myData = await transmissionMock.stringToSwapData(myString);
+            expect(myData).to.equal(swapData);
         });
 
 
@@ -98,6 +102,7 @@ describe("TransmissionLib via TransmissionMock", function () {
             const receivedData = await transmissionMock.fullConversionSwap();
             expect(receivedData.transmissionType).to.equal(swapData.transmissionType);
             expect(receivedData.token).to.equal(swapData.token);
+            expect(receivedData.beneficiary).to.equal(swapData.beneficiary);
             expect(receivedData.nonce).to.equal(swapData.nonce);
             expect(receivedData.inAmount).to.equal(swapData.inAmount);
             expect(receivedData.outAmount).to.equal(swapData.outAmount);
@@ -135,14 +140,16 @@ describe("TransmissionLib via TransmissionMock", function () {
             const receivedData = await transmissionMock.liquidityStaging();
             expect(receivedData.transmissionType).to.equal(liquidityStagingData.transmissionType);
             expect(receivedData.token).to.equal(liquidityStagingData.token);
+            expect(receivedData.beneficiary).to.equal(liquidityStagingData.beneficiary);
             expect(receivedData.nonce).to.equal(liquidityStagingData.nonce);
             expect(receivedData.inAmount).to.equal(liquidityStagingData.inAmount);
             expect(receivedData.outAmount).to.equal(liquidityStagingData.outAmount);
         });
 
         it("should give us correct bytes data", async function () {
-            const calculatedBytes = '0x0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000078900000000000000000000000000000000000000000000000000000000000003150000000000000000000000000000000000000000000000000000000000000fa0000000000000000000000000000000000000000000000000000000000000138800000000000000000000000000000000000000000000000000000000000007d0'
+            const calculatedBytes = '0x000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000007890000000000000000000000006ade6a2bdfbda76c4555005ee7dd7dcde571d2a800000000000000000000000000000000000000000000000000000000000003150000000000000000000000000000000000000000000000000000000000000fa0000000000000000000000000000000000000000000000000000000000000138800000000000000000000000000000000000000000000000000000000000007d0'
             const myBytes = await transmissionMock.liquidityToBytes();
+
             expect(calculatedBytes).to.equal(myBytes)
         });
 
@@ -151,6 +158,7 @@ describe("TransmissionLib via TransmissionMock", function () {
 
             expect(receivedData.transmissionType).to.equal(liquidityStagingData.transmissionType);
             expect(receivedData.token).to.equal(liquidityStagingData.token);
+            expect(receivedData.beneficiary).to.equal(liquidityStagingData.beneficiary);
             expect(receivedData.nonce.toString()).to.equal(liquidityStagingData.nonce.toString());
             expect(receivedData.inAmount.toString()).to.equal(liquidityStagingData.inAmount.toString());
             expect(receivedData.outAmount.toString()).to.equal(liquidityStagingData.outAmount.toString());
@@ -169,6 +177,7 @@ describe("TransmissionLib via TransmissionMock", function () {
             const receivedData = await transmissionMock.liquidity();
             expect(receivedData.transmissionType).to.equal(liquidityData.transmissionType);
             expect(receivedData.token).to.equal(liquidityData.token);
+            expect(receivedData.beneficiary).to.equal(liquidityData.beneficiary);
             expect(receivedData.nonce).to.equal(liquidityData.nonce);
             expect(receivedData.mountain).to.equal(liquidityData.mountain);
             expect(receivedData.lake).to.equal(liquidityData.lake);
@@ -176,7 +185,7 @@ describe("TransmissionLib via TransmissionMock", function () {
         });
 
         it("should give us correct bytes data", async function () {
-            const calculatedBytes = '0x0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000045600000000000000000000000000000000000000000000000000000000000001c80000000000000000000000000000000000000000000000000000000000000bb80000000000000000000000000000000000000000000000000000000000001770'
+            const calculatedBytes = '0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000004560000000000000000000000006ade6a2bdfbda76c4555005ee7dd7dcde571d2a800000000000000000000000000000000000000000000000000000000000001c80000000000000000000000000000000000000000000000000000000000000bb80000000000000000000000000000000000000000000000000000000000001770'
             const myBytes = await transmissionMock.liquidityStagingToBytes();
             expect(calculatedBytes).to.equal(myBytes)
         });
@@ -186,6 +195,7 @@ describe("TransmissionLib via TransmissionMock", function () {
 
             expect(receivedData.transmissionType).to.equal(liquidityData.transmissionType);
             expect(receivedData.token).to.equal(liquidityData.token);
+            expect(receivedData.beneficiary).to.equal(liquidityData.beneficiary);
             expect(receivedData.nonce).to.equal(liquidityData.nonce);
             expect(receivedData.mountain).to.equal(liquidityData.mountain);
             expect(receivedData.lake).to.equal(liquidityData.lake);

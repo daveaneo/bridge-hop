@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-// todo -- create setup script and test script for mountains on given network
-// todo -- pass in mountain information and lake information and addresses
-
+// todo -- there is confusion between 'receiver' -- contract that receives ccip message and 'receiver' of bridging
+// lets call t
 
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {OwnerIsCreator} from "@chainlink/contracts-ccip/src/v0.8/shared/access/OwnerIsCreator.sol";
@@ -165,6 +164,44 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     }
 
 
+    function calculateCCIPFee(
+        TransmissionLib.TransmissionType structureType,
+        bytes memory transmissionType,
+        address _receiver,
+        uint64 _destinationChainSelector
+    ) external view returns (uint256 fee) {
+        string memory _text;
+
+        // Determine which structure to use and create the text
+        if (structureType == TransmissionLib.TransmissionType.SwapData) {
+            TransmissionLib.SwapData memory swapData = abi.decode(transmissionType, (TransmissionLib.SwapData));
+            _text = TransmissionLib.dataToStringSwap(swapData);
+        } else if (structureType == TransmissionLib.TransmissionType.LiquidityStaging) {
+            TransmissionLib.LiquidityStaging memory liquidityStaging = abi.decode(transmissionType, (TransmissionLib.LiquidityStaging));
+            _text = TransmissionLib.dataToStringLiquidityStaging(liquidityStaging);
+        } else if (structureType == TransmissionLib.TransmissionType.Liquidity) {
+            TransmissionLib.Liquidity memory liquidity = abi.decode(transmissionType, (TransmissionLib.Liquidity));
+            _text = TransmissionLib.dataToStringLiquidity(liquidity);
+        } else {
+            revert("Invalid structure type");
+        }
+
+        // Create an EVM2AnyMessage struct
+        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
+            _receiver,
+            _text,
+            address(0) // Assuming fees are paid in the native currency
+        );
+
+        // Calculate the fee
+        IRouterClient router = IRouterClient(this.getRouter());
+        fee = router.getFee(_destinationChainSelector, evm2AnyMessage);
+
+        return fee;
+    }
+
+
+
 
 
 
@@ -210,9 +247,11 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     function stageLiquidity(address _tokenAddress, uint256 amount) external payable onlyOwner nonReentrant {
         require(_tokenAddress == address(0) || amount > 0, "Invalid amount");
 
+//        uint256 ETHFess;
+
         if (_tokenAddress == address(0)) {
             // Staging ETH
-            require(msg.value == amount, "ETH value mismatch");
+            require(msg.value >= amount, "ETH value mismatch");
             liquidityStaging[myNetworkAddress][_tokenAddress] += msg.value;
         } else {
             // Staging ERC20 token
@@ -220,28 +259,40 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
             liquidityStaging[myNetworkAddress][_tokenAddress] += amount;
         }
 
-
-        // if lake, we want to
-
-
         // if Lake, transmit info to Mountain
         if(terrain == TerrainType.LAKE){
             require(mountainInfo.contractAddress!=address(0), "Mountain info not set");
-            TransmissionLib.LiquidityStaging memory myData = TransmissionLib.LiquidityStaging(TransmissionLib.TransmissionType.LiquidityStaging, _tokenAddress, nonce, uint120(amount), 0);
+            TransmissionLib.LiquidityStaging memory myData = TransmissionLib.LiquidityStaging(TransmissionLib.TransmissionType.LiquidityStaging, _tokenAddress, msg.sender, nonce, uint120(amount), 0);
             string memory _text = TransmissionLib.dataToStringLiquidityStaging(myData);
+
+//            sendMessagePayNative(uint64(mountainInfo.blockchainId), mountainInfo.contractAddress, _text);
+
             Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
                 mountainInfo.contractAddress,
                 _text,
                 address(0)
             );
 
-            // Send the CCIP message through the router and store the returned CCIP message ID
+
             // Initialize a router client instance to interact with cross-chain router
             IRouterClient router = IRouterClient(this.getRouter());
+
+            // todo -- build off (on-chain pure call) chain way of getting fee
+           // Get the fee required to send the CCIP message
+            uint256 fees = router.getFee(uint64(mountainInfo.blockchainId), evm2AnyMessage);
+
+            if (fees + amount < msg.value)
+                revert NotEnoughBalance(address(this).balance, fees);
+            else{
+                uint256 overpay = msg.value - fees - amount;
+                if (overpay>0){
+                    payable(msg.sender).transfer(overpay);
+                }
+            }
+
+            // Send the CCIP message through the router and store the returned CCIP message ID
             router.ccipSend(uint64(mountainInfo.blockchainId), evm2AnyMessage);
-
         }
-
         emit LiquidityStaged(myNetworkAddress, msg.sender, _tokenAddress, amount);
     }
 
@@ -310,6 +361,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         TransmissionLib.Liquidity memory liquidityData = TransmissionLib.Liquidity({
             transmissionType: TransmissionLib.TransmissionType.Liquidity,
             token: tokenAddress,
+            beneficiary: msg.sender,
             nonce: nonce,
             mountain: uint120(mountainSide),
             lake: uint120(lakeSide),
@@ -390,6 +442,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         uint64 _destinationChainSelector,
         uint96 _outAmount,
         address _receiver,
+        address _beneficiary,
         uint16 slippage
     )
         external
@@ -404,7 +457,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         uint96 adjustedIn = uint96(msg.value);
 
         // Call the internal _bridge function
-        return _bridge(address(0), adjustedIn, _outAmount, _destinationChainSelector, _receiver, slippage);
+        return _bridge(address(0), adjustedIn, _outAmount, _destinationChainSelector, _receiver, _beneficiary, slippage);
     }
 
     /**
@@ -423,6 +476,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         uint96 _outAmount,
         uint64 _destinationChainSelector,
         address _receiver,
+        address _beneficiary,
         uint16 slippage
     )
         external
@@ -441,7 +495,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
 
 
         // Call the internal _bridge function
-        return _bridge(_tokenAddress, _inAmount, _outAmount, _destinationChainSelector, _receiver, slippage);
+        return _bridge(_tokenAddress, _inAmount, _outAmount, _destinationChainSelector, _receiver, _beneficiary, slippage);
     }
 
 
@@ -464,6 +518,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         uint96 _outAmount,
         uint64 _destinationChainSelector,
         address _receiver,
+        address _beneficiary,
         uint16 slippage // 100 is 1 percent
     )
         internal
@@ -490,7 +545,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         require(slippageAmount <= slippage, "Too much slippage.");
 
         // convert data to string
-        TransmissionLib.SwapData memory myData = TransmissionLib.SwapData(TransmissionLib.TransmissionType.SwapData, _tokenAddress, nonce, _inAmount, _outAmount, slippage);
+        TransmissionLib.SwapData memory myData = TransmissionLib.SwapData(TransmissionLib.TransmissionType.SwapData, _tokenAddress, _beneficiary, nonce, _inAmount, _outAmount, slippage);
         string memory _text = TransmissionLib.dataToStringSwap(myData);
 
 
