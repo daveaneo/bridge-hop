@@ -13,9 +13,9 @@ const { expect } = require("chai");
 
 
 
-const ethereumContractAddress = '0x43859037C5d8208eFc1D9D2937f3cf87a7BBfafF'
-const avalancheContractAddress = '0x1723E581b4BCd5e0C5e3009C4556a967Ac22f05F'
-const ethereumTransmissionLibAddress = '0xb275e22eDf2ba04E0f9F3A904Ac1b38F307a76Bc'
+const ethereumTransmissionLibAddress = '0xBe6FFfA51d16cd488D2E6cE405ce0eD4f21D1E2a'
+const ethereumContractAddress = '0x306B1EB80873054EdB22c3A9e55f87F4F068901f'
+const avalancheContractAddress = '0xf348aa30B3c29D709203cc05bd35CF5C151DFE5E'
 
 
 
@@ -76,6 +76,17 @@ const liquidityData = {
     stagingLake: 2000
 };
 
+//
+//async function getWalletBalance(wallet) {
+//    // Fetch the balance
+//    const balance = await wallet.provider.getBalance(wallet.address);
+//
+//    // Convert the balance from Wei to Ether
+//    const balanceInEth = ethers.utils.formatEther(balance);
+//
+//    console.log(`Balance of wallet ${wallet.address} is ${balanceInEth} ETH`);
+//}
+//
 
 async function initialSetup() {
   // Load the contract's artifacts, which includes the ABI
@@ -236,14 +247,14 @@ describe("Full Bridging Live Test", function () {
 
 
         it("Expect LiquidityStaged to be emitted", async function () {
-          stagedInit = await mountain.liquidityStaging(mountainChainSelector, zeroAddress)
+          stagedInit = await mountain.liquidityStaging(mountainChainSelector, zeroAddress) // todo -- change this back to amountToStage + fee
           tx = await mountain.stageLiquidity(zeroAddress,amountToStage, {value:amountToStage});
           txReceipt = await tx.wait();
 
           // Check if the transaction receipt has the expected event
           expect(txReceipt.events?.some((event) => event.event === "LiquidityStaged")).to.be.true;
           //    event LiquidityStaged(uint256 indexed blockchainId, address indexed provider, address indexed token, uint256 amount);
-        });
+        }).timeout(90000);;
 
 
         it("Event values as expected", async function () {
@@ -271,8 +282,15 @@ describe("Full Bridging Live Test", function () {
 
 
         it("Expect LiquidityStaged to be emitted", async function () {
+          const myFullBalance = await walletEth.provider.getBalance(walletEth.address);
+
+          console.log("my full balance: ")
+          console.log(myFullBalance.toString())
+          const hardCodedBalance = ethers.BigNumber.from('1255294329882088');;
+
+
           stagedInit = await lake.liquidityStaging(lakeChainSelector, zeroAddress)
-          tx = await lake.stageLiquidity(zeroAddress,amountToStage, {value:amountToStage});
+          tx = await lake.stageLiquidity(zeroAddress,amountToStage, {value:hardCodedBalance});
           txReceipt = await tx.wait();
 
           // Check if the transaction receipt has the expected event

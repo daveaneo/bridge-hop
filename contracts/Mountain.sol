@@ -237,14 +237,66 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     }
 
 
+//    /// @notice Allows liquidity providers to stage liquidity (ERC20 tokens or ETH)
+//    /// @param _tokenAddress The address of the ERC20 token to be staged; address(0) for ETH
+//    /// @param amount The amount of the token (or ETH) to be staged
+//    function stageLiquidity(address _tokenAddress, uint256 amount) external payable onlyOwner nonReentrant {
+//        require(_tokenAddress == address(0) || amount > 0, "Invalid amount");
+//        if (_tokenAddress == address(0)) {
+//            // Staging ETH
+//            require(msg.value >= amount, "ETH value mismatch");
+//            liquidityStaging[myNetworkAddress][_tokenAddress] += msg.value;
+//        } else {
+//            // Staging ERC20 token
+//            IERC20(_tokenAddress).transferFrom(msg.sender, address(this), amount);
+//            liquidityStaging[myNetworkAddress][_tokenAddress] += amount;
+//        }
+//
+//        // if Lake, transmit info to Mountain
+//        if(terrain == TerrainType.LAKE){
+//            require(mountainInfo.contractAddress!=address(0), "Mountain info not set");
+//            TransmissionLib.LiquidityStaging memory myData = TransmissionLib.LiquidityStaging(TransmissionLib.TransmissionType.LiquidityStaging, _tokenAddress, msg.sender, nonce, uint120(amount), 0);
+//            string memory _text = TransmissionLib.dataToStringLiquidityStaging(myData);
+//
+//
+//            sendMessagePayNative(uint64(lakeBlockchainId), receiver, dataStr);
+//
+//            // todo -- revise this as we are building a bytes to string back to bytes in _text
+//            Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
+//                mountainInfo.contractAddress,
+//                _text,
+//                address(0)
+//            );
+//
+//
+//            // Initialize a router client instance to interact with cross-chain router
+//            IRouterClient router = IRouterClient(this.getRouter());
+//
+//           // Get the fee required to send the CCIP message
+//            uint256 fees = router.getFee(uint64(mountainInfo.blockchainId), evm2AnyMessage);
+//
+//            if (fees + amount < msg.value)
+//                revert NotEnoughBalance(address(this).balance, fees);
+//            else{
+//                uint256 overpay = msg.value - fees - amount;
+//                if (overpay>0){
+//                    payable(msg.sender).transfer(overpay);
+//                }
+//            }
+//
+//            // Send the CCIP message through the router and store the returned CCIP message ID
+//            router.ccipSend{value: fees}(uint64(mountainInfo.blockchainId), evm2AnyMessage);
+//        }
+//        emit LiquidityStaged(myNetworkAddress, msg.sender, _tokenAddress, amount);
+//    }
+
+
+
     /// @notice Allows liquidity providers to stage liquidity (ERC20 tokens or ETH)
     /// @param _tokenAddress The address of the ERC20 token to be staged; address(0) for ETH
     /// @param amount The amount of the token (or ETH) to be staged
     function stageLiquidity(address _tokenAddress, uint256 amount) external payable onlyOwner nonReentrant {
         require(_tokenAddress == address(0) || amount > 0, "Invalid amount");
-
-//        uint256 ETHFess;
-
         if (_tokenAddress == address(0)) {
             // Staging ETH
             require(msg.value >= amount, "ETH value mismatch");
@@ -261,8 +313,9 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
             TransmissionLib.LiquidityStaging memory myData = TransmissionLib.LiquidityStaging(TransmissionLib.TransmissionType.LiquidityStaging, _tokenAddress, msg.sender, nonce, uint120(amount), 0);
             string memory _text = TransmissionLib.dataToStringLiquidityStaging(myData);
 
-//            sendMessagePayNative(uint64(mountainInfo.blockchainId), mountainInfo.contractAddress, _text);
 
+//            sendMessagePayNative(uint64(mountainInfo.blockchainId), mountainInfo.contractAddress, _text);
+            // todo -- revise this as we are building a bytes to string back to bytes in _text
             Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
                 mountainInfo.contractAddress,
                 _text,
@@ -273,7 +326,6 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
             // Initialize a router client instance to interact with cross-chain router
             IRouterClient router = IRouterClient(this.getRouter());
 
-            // todo -- build off (on-chain pure call) chain way of getting fee
            // Get the fee required to send the CCIP message
             uint256 fees = router.getFee(uint64(mountainInfo.blockchainId), evm2AnyMessage);
 
@@ -287,10 +339,14 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
             }
 
             // Send the CCIP message through the router and store the returned CCIP message ID
-            router.ccipSend(uint64(mountainInfo.blockchainId), evm2AnyMessage);
+            router.ccipSend{value: fees}(uint64(mountainInfo.blockchainId), evm2AnyMessage);
         }
         emit LiquidityStaged(myNetworkAddress, msg.sender, _tokenAddress, amount);
     }
+
+
+
+
 
 //    /// @notice Allows liquidity providers to withdraw their staged liquidity (ERC20 tokens or ETH)
 //    /// @param token The address of the ERC20 token to be withdrawn; address(0) for ETH
@@ -550,8 +606,8 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         messageId = sendMessagePayNative(_destinationChainSelector, _receiver, _text);
     }
 
-//
-//
+
+
 //    /// @notice Sends data to receiver on the destination chain.
 //    /// @notice Pay for fees in LINK.
 //    /// @dev Assumes your contract has sufficient LINK.
@@ -604,6 +660,8 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
 //        // Return the CCIP message ID
 //        return messageId;
 //    }
+
+
 
     /// @notice Sends data to receiver on the destination chain.
     /// @notice Pay for fees in native gas.
