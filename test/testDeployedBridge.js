@@ -8,13 +8,26 @@ const hre = require("hardhat");
 const { ethers } = require('ethers');
 const { expect } = require("chai");
 
+
+
+
+
+
+const ethereumContractAddress = '0x43859037C5d8208eFc1D9D2937f3cf87a7BBfafF'
+const avalancheContractAddress = '0x1723E581b4BCd5e0C5e3009C4556a967Ac22f05F'
+const ethereumTransmissionLibAddress = '0xb275e22eDf2ba04E0f9F3A904Ac1b38F307a76Bc'
+
+
+
 // these depend upon deployment address and chains used (see constants.ts)
-const ethereumContractAddress = '0x707dE55f7E38eA2c61C553666a0eba7f4cC2f4d5'
-const avalancheContractAddress = '0x8c5179dfec1C590C59E6607b73cfd0891fa59Bf5'
+// old
+//const ethereumContractAddress = '0x707dE55f7E38eA2c61C553666a0eba7f4cC2f4d5'
+//const avalancheContractAddress = '0x8c5179dfec1C590C59E6607b73cfd0891fa59Bf5'
+//const ethereumTransmissionLibAddress = '0x707dE55f7E38eA2c61C553666a0eba7f4cC2f4d5'
+
+
 const mountainChainSelector = ethers.BigNumber.from('16015286601757825753');
 const lakeChainSelector = ethers.BigNumber.from('14767482510784806043');
-
-const ethereumTransmissionLibAddress = '0x707dE55f7E38eA2c61C553666a0eba7f4cC2f4d5'
 const avalancheRouter = "0x554472a2720e5e7d5d3c817529aba05eed5f82d8";
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
@@ -149,8 +162,8 @@ describe("Test Live values on Mountain Contract", function () {
 
       it("Correct Mountain Config:", async function () {
           const {blockchainId, contractAddress} = await lake.getMountainInfo();
-          const expectedBlockchainId = '1192346811958337004712393628105636338708327601087';
-          const expectedContractAddress = '0x707dE55f7E38eA2c61C553666a0eba7f4cC2f4d5';
+          const expectedBlockchainId = mountainChainSelector;
+          const expectedContractAddress = mountain.address;
           expect(blockchainId).to.equal(expectedBlockchainId);
           expect(contractAddress).to.equal(expectedContractAddress);
       });
@@ -166,7 +179,7 @@ describe("Test Live values on Mountain Contract", function () {
 
           let finalStagedAmount = await mountain.liquidityStaging(mountainChainSelector, zeroAddress)
           expect(finalStagedAmount).to.equal(0);
-    }).timeout(90000);;
+    }).timeout(90000);
 
     it("Stage and withdraw 'ETH' on Lake", async function () {
           let tx = await lake.stageLiquidity(zeroAddress,amountToStage, {value:amountToStage});
@@ -191,7 +204,7 @@ describe("Test Live values on Mountain Contract", function () {
         const receiver = mountain.address;
         const destinationChainSelector = mountainChainSelector; // example chain selector
         const fee = await transmissionLib.calculateCCIPFee(
-            0, // 0 for SwapData, adjust for other types
+            TransmissionType.SwapData, // 0 for SwapData, adjust for other types
             encodedSwapData,
             avalancheContractAddress,
             mountainChainSelector,

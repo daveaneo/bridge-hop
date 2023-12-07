@@ -60,7 +60,7 @@ task(`deploy-mountain`, `Deploys Mountain contracts on...`)
         await mountain.deployed();
 
         spinner.stop();
-        console.log(`✅ ProgrammableTokenTransfers deployed at address ${mountain.address} on ${hre.network.name} blockchain`)
+        console.log(`✅ Mountain/Lake deployed at address ${mountain.address} on ${hre.network.name} blockchain`)
 
         console.log(`Waiting for transaction confirmations...`);
         await sleep(60 * 1000)
