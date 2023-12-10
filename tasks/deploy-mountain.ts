@@ -51,11 +51,12 @@ task(`deploy-mountain`, `Deploys Mountain contracts on...`)
 
 
         // Deploy the Mountain contract with the library linked
-        const mountainFactory = await hre.ethers.getContractFactory('Mountain', {
-            libraries: {
-                TransmissionLib: transmissionLib.address,
-            },
-        });
+        const mountainFactory = await hre.ethers.getContractFactory('Mountain');
+//         const mountainFactory = await hre.ethers.getContractFactory('Mountain', {
+//             libraries: {
+//                 TransmissionLib: transmissionLib.address,
+//             },
+//         });
         const mountain = await mountainFactory.deploy(routerAddress, linkAddress, terrainType, myNetworkChainlinkId);
         await mountain.deployed();
 

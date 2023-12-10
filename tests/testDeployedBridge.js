@@ -13,9 +13,9 @@ const { expect } = require("chai");
 
 
 
-const ethereumTransmissionLibAddress = '0xBe6FFfA51d16cd488D2E6cE405ce0eD4f21D1E2a'
-const ethereumContractAddress = '0x306B1EB80873054EdB22c3A9e55f87F4F068901f'
-const avalancheContractAddress = '0xf348aa30B3c29D709203cc05bd35CF5C151DFE5E'
+const ethereumTransmissionLibAddress = '0x79bfCE7e219770ADf1774e6a737E505795Da5f56'
+const ethereumContractAddress = '0x4146D89eCED3656e90ae30dc038258dACbeF8435'
+const avalancheContractAddress = '0x041c2c594cF9232bF559530e5e0626799A6e1A23'
 
 
 
@@ -193,7 +193,11 @@ describe("Test Live values on Mountain Contract", function () {
     }).timeout(90000);
 
     it("Stage and withdraw 'ETH' on Lake", async function () {
-          let tx = await lake.stageLiquidity(zeroAddress,amountToStage, {value:amountToStage});
+          // todo -- call router directly and get fee or create fee estimator on the contract
+
+          const hardcodedFee = ethers.BigNumber.from('915483893615812053'); // added extra zero from previous fee
+          const messageValue = hardcodedFee.add(amountToStage)
+          let tx = await lake.stageLiquidity(zeroAddress,amountToStage, {value:messageValue});
           let txReceipt = await tx.wait();
 
           let stagedAmount = await lake.liquidityStaging(lakeChainSelector, zeroAddress);
@@ -286,7 +290,7 @@ describe("Full Bridging Live Test", function () {
 
           console.log("my full balance: ")
           console.log(myFullBalance.toString())
-          const hardCodedBalance = ethers.BigNumber.from('1255294329882088');;
+          const hardCodedBalance = ethers.BigNumber.from('1255294329882088');
 
 
           stagedInit = await lake.liquidityStaging(lakeChainSelector, zeroAddress)

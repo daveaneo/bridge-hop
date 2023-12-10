@@ -9,4 +9,5 @@ export { BasicMessageSender__factory } from "./BasicMessageSender__factory";
 export { BasicTokenSender__factory } from "./BasicTokenSender__factory";
 export { Mountain__factory } from "./Mountain__factory";
 export { ProgrammableTokenTransfers__factory } from "./ProgrammableTokenTransfers__factory";
+export { Terrain__factory } from "./Terrain__factory";
 export { TransmissionLib__factory } from "./TransmissionLib__factory";

@@ -38,7 +38,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         bytes32 indexed messageId, // The unique ID of the CCIP message.
         uint64 indexed destinationChainSelector, // The chain selector of the destination chain.
         address receiver, // The address of the receiver on the destination chain.
-        string text, // The text being sent.
+        bytes data, // The text being sent.
         address feeToken, // the token address used to pay CCIP fees.
         uint256 fees // The fees paid for sending the CCIP message.
     );
@@ -237,61 +237,6 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     }
 
 
-//    /// @notice Allows liquidity providers to stage liquidity (ERC20 tokens or ETH)
-//    /// @param _tokenAddress The address of the ERC20 token to be staged; address(0) for ETH
-//    /// @param amount The amount of the token (or ETH) to be staged
-//    function stageLiquidity(address _tokenAddress, uint256 amount) external payable onlyOwner nonReentrant {
-//        require(_tokenAddress == address(0) || amount > 0, "Invalid amount");
-//        if (_tokenAddress == address(0)) {
-//            // Staging ETH
-//            require(msg.value >= amount, "ETH value mismatch");
-//            liquidityStaging[myNetworkAddress][_tokenAddress] += msg.value;
-//        } else {
-//            // Staging ERC20 token
-//            IERC20(_tokenAddress).transferFrom(msg.sender, address(this), amount);
-//            liquidityStaging[myNetworkAddress][_tokenAddress] += amount;
-//        }
-//
-//        // if Lake, transmit info to Mountain
-//        if(terrain == TerrainType.LAKE){
-//            require(mountainInfo.contractAddress!=address(0), "Mountain info not set");
-//            TransmissionLib.LiquidityStaging memory myData = TransmissionLib.LiquidityStaging(TransmissionLib.TransmissionType.LiquidityStaging, _tokenAddress, msg.sender, nonce, uint120(amount), 0);
-//            string memory _text = TransmissionLib.dataToStringLiquidityStaging(myData);
-//
-//
-//            sendMessagePayNative(uint64(lakeBlockchainId), receiver, dataStr);
-//
-//            // todo -- revise this as we are building a bytes to string back to bytes in _text
-//            Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
-//                mountainInfo.contractAddress,
-//                _text,
-//                address(0)
-//            );
-//
-//
-//            // Initialize a router client instance to interact with cross-chain router
-//            IRouterClient router = IRouterClient(this.getRouter());
-//
-//           // Get the fee required to send the CCIP message
-//            uint256 fees = router.getFee(uint64(mountainInfo.blockchainId), evm2AnyMessage);
-//
-//            if (fees + amount < msg.value)
-//                revert NotEnoughBalance(address(this).balance, fees);
-//            else{
-//                uint256 overpay = msg.value - fees - amount;
-//                if (overpay>0){
-//                    payable(msg.sender).transfer(overpay);
-//                }
-//            }
-//
-//            // Send the CCIP message through the router and store the returned CCIP message ID
-//            router.ccipSend{value: fees}(uint64(mountainInfo.blockchainId), evm2AnyMessage);
-//        }
-//        emit LiquidityStaged(myNetworkAddress, msg.sender, _tokenAddress, amount);
-//    }
-
-
-
     /// @notice Allows liquidity providers to stage liquidity (ERC20 tokens or ETH)
     /// @param _tokenAddress The address of the ERC20 token to be staged; address(0) for ETH
     /// @param amount The amount of the token (or ETH) to be staged
@@ -311,17 +256,13 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         if(terrain == TerrainType.LAKE){
             require(mountainInfo.contractAddress!=address(0), "Mountain info not set");
             TransmissionLib.LiquidityStaging memory myData = TransmissionLib.LiquidityStaging(TransmissionLib.TransmissionType.LiquidityStaging, _tokenAddress, msg.sender, nonce, uint120(amount), 0);
-            string memory _text = TransmissionLib.dataToStringLiquidityStaging(myData);
+//            string memory _text = TransmissionLib.dataToStringLiquidityStaging(myData);
 
-
-//            sendMessagePayNative(uint64(mountainInfo.blockchainId), mountainInfo.contractAddress, _text);
-            // todo -- revise this as we are building a bytes to string back to bytes in _text
             Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
                 mountainInfo.contractAddress,
-                _text,
+                abi.encode(myData),
                 address(0)
             );
-
 
             // Initialize a router client instance to interact with cross-chain router
             IRouterClient router = IRouterClient(this.getRouter());
@@ -419,10 +360,10 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
             lake: uint120(lakeSide),
             stagingLake: uint120(stagingLake)
         });
-        string memory dataStr =TransmissionLib.dataToStringLiquidity(liquidityData);
+//        string memory dataStr =TransmissionLib.dataToStringLiquidity(liquidityData);
 
         // Send CCIP message
-        sendMessagePayNative(uint64(lakeBlockchainId), receiver, dataStr);
+        sendMessagePayNative(uint64(lakeBlockchainId), receiver, abi.encode(liquidityData));
 
         // Increment nonce for next operation
         nonce++;
@@ -598,12 +539,12 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
 
         // convert data to string
         TransmissionLib.SwapData memory myData = TransmissionLib.SwapData(TransmissionLib.TransmissionType.SwapData, _tokenAddress, _beneficiary, nonce, _inAmount, _outAmount, slippage);
-        string memory _text = TransmissionLib.dataToStringSwap(myData);
+//        string memory _text = TransmissionLib.dataToStringSwap(myData);
 
 
         // Call sendMessagePayNative function
         // Assuming this function is part of the same contract
-        messageId = sendMessagePayNative(_destinationChainSelector, _receiver, _text);
+        messageId = sendMessagePayNative(_destinationChainSelector, _receiver, abi.encode(myData));
     }
 
 
@@ -668,33 +609,40 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
     /// @dev Assumes your contract has sufficient native gas tokens.
     /// @param _destinationChainSelector The identifier (aka selector) for the destination blockchain.
     /// @param _receiver The address of the recipient on the destination blockchain.
-    /// @param _text The text to be sent.
+    /// @param _data The data to be sent.
     /// @return messageId The ID of the CCIP message that was sent.
     function sendMessagePayNative(
         uint64 _destinationChainSelector,
         address _receiver,
-        string memory _text
+        bytes memory _data
     )
-        internal
-        onlyOwner
-        onlyAllowlistedDestinationChain(_destinationChainSelector)
+        public payable
         returns (bytes32 messageId)
     {
+
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
             _receiver,
-            _text,
+            _data,
             address(0)
         );
 
         // Initialize a router client instance to interact with cross-chain router
-        IRouterClient router = IRouterClient(this.getRouter());
+        IRouterClient router =  IRouterClient(this.getRouter());
 
         // Get the fee required to send the CCIP message
         uint256 fees = router.getFee(_destinationChainSelector, evm2AnyMessage);
 
-        if (fees > address(this).balance)
-            revert NotEnoughBalance(address(this).balance, fees);
+//        // Check if there's enough balance to cover fees and amount
+//        require(fees + amount <= address(this).balance, string(abi.encodePacked(
+//            "Not enough balance: required ",
+//            uintToString(fees + amount),
+//            ", available ",
+//            uintToString(address(this).balance)
+//        )));
+
+        // Check if there's enough balance to cover fees and amount
+        require(fees < address(this).balance, string("Not enough balance: required "));
 
         // Send the CCIP message through the router and store the returned CCIP message ID
         messageId = router.ccipSend{value: fees}(
@@ -707,7 +655,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
             messageId,
             _destinationChainSelector,
             _receiver,
-            _text,
+            _data,
             address(0),
             fees
         );
@@ -715,6 +663,7 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         // Return the CCIP message ID
         return messageId;
     }
+
 
     /// handle a received message
     function _ccipReceive(
@@ -757,31 +706,33 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
         );
     }
 
+
     /// @notice Construct a CCIP message.
     /// @dev This function will create an EVM2AnyMessage struct with all the necessary information for sending a text.
     /// @param _receiver The address of the receiver.
-    /// @param _text The string data to be sent.
+    /// @param _data The  data to be sent.
     /// @param _feeTokenAddress The address of the token used for fees. Set address(0) for native gas.
     /// @return Client.EVM2AnyMessage Returns an EVM2AnyMessage struct which contains information for sending a CCIP message.
     function _buildCCIPMessage(
         address _receiver,
-        string memory _text,
+        bytes memory _data,
         address _feeTokenAddress
     ) internal pure returns (Client.EVM2AnyMessage memory) {
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         return
             Client.EVM2AnyMessage({
                 receiver: abi.encode(_receiver), // ABI-encoded receiver address
-                data: abi.encode(_text), // ABI-encoded string
+                data: _data, // ABI-encoded string
                 tokenAmounts: new Client.EVMTokenAmount[](0), // Empty array aas no tokens are transferred
                 extraArgs: Client._argsToBytes(
                     // Additional arguments, setting gas limit and non-strict sequencing mode
-                    Client.EVMExtraArgsV1({gasLimit: 200_000, strict: false})
+                    Client.EVMExtraArgsV1({gasLimit: 2_000_000, strict: false})
                 ),
                 // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
                 feeToken: _feeTokenAddress
             });
     }
+
 
 
     /**
@@ -876,4 +827,25 @@ contract Mountain is CCIPReceiver, OwnerIsCreator, ReentrancyGuard {
             revert("Withdrawal not approved or terrain type mismatch");
         }
     }
+
+//    // Helper function to convert a uint256 to a string
+//    function uintToString(uint256 _value) internal pure returns (string memory) {
+//        if (_value == 0) {
+//            return "0";
+//        }
+//        uint256 temp = _value;
+//        uint256 digits;
+//        while (temp != 0) {
+//            digits++;
+//            temp /= 10;
+//        }
+//        bytes memory buffer = new bytes(digits);
+//        while (_value != 0) {
+//            digits -= 1;
+//            buffer[digits] = bytes1(uint8(48 + _value % 10));
+//            _value /= 10;
+//        }
+//        return string(buffer);
+//    }
+
 }

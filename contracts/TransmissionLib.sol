@@ -3,10 +3,12 @@ pragma solidity 0.8.19;
 
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {IERC20} from "@chainlink/contracts-ccip/src/v0.8/vendor/openzeppelin-solidity/v4.8.0/token/ERC20/IERC20.sol";
+
 
 library TransmissionLib {
     enum TransmissionType { SwapData, LiquidityStaging, Liquidity }
-
+    enum TerrainType {  LAKE, MOUNTAIN }
 
     struct SwapData {
         TransmissionType transmissionType;
@@ -35,6 +37,11 @@ library TransmissionLib {
         uint120 mountain;
         uint120 lake;
         uint120 stagingLake;
+    }
+
+    struct TerrainInfo {
+        uint256 blockchainId;
+        address contractAddress;
     }
 
 

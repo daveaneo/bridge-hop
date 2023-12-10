@@ -113,6 +113,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.SourceMinter__factory>;
     getContractFactory(
+      name: "DataMock",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.DataMock__factory>;
+    getContractFactory(
       name: "TestToken",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.TestToken__factory>;
@@ -128,6 +132,10 @@ declare module "hardhat/types/runtime" {
       name: "ProgrammableTokenTransfers",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ProgrammableTokenTransfers__factory>;
+    getContractFactory(
+      name: "Terrain",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.Terrain__factory>;
     getContractFactory(
       name: "TransmissionLib",
       signerOrOptions?: ethers.Signer | FactoryOptions
@@ -275,6 +283,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.SourceMinter>;
     getContractAt(
+      name: "DataMock",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.DataMock>;
+    getContractAt(
       name: "TestToken",
       address: string,
       signer?: ethers.Signer
@@ -294,6 +307,11 @@ declare module "hardhat/types/runtime" {
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.ProgrammableTokenTransfers>;
+    getContractAt(
+      name: "Terrain",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.Terrain>;
     getContractAt(
       name: "TransmissionLib",
       address: string,

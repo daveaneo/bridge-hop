@@ -61,7 +61,7 @@ export const routerConfig = {
         feeTokens: [LINK_ADDRESSES[`optimismGoerli`], `0x4200000000000000000000000000000000000006`]
     },
     avalancheFuji: {
-        address: `0x554472a2720e5e7d5d3c817529aba05eed5f82d8`,
+        address: `0x554472a2720E5E7D5D3C817529aBA05EEd5F82D8`,
         chainSelector: `14767482510784806043`,
         feeTokens: [LINK_ADDRESSES[`avalancheFuji`], `0xd00ae08403B9bbb9124bB305C09058E32C39A48c`]
     },
