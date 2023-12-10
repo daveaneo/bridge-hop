@@ -128,3 +128,9 @@ export const verifyContract = async (contractAddress: string, contractNameWithPa
 export const sleep = async (ms) => {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+function Enum(...options) {
+    return Object.fromEntries(options.map((key, i) => [key, i]));
+}
+
+export const TransmissionType = Enum("SwapData", "LiquidityStaging", "Liquidity");

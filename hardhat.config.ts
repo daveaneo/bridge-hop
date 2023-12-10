@@ -5,6 +5,7 @@ import { HardhatUserConfig } from 'hardhat/config';
 import '@nomicfoundation/hardhat-toolbox';
 import './tasks';
 import "./tasks/deploy-mountain";
+import "./tasks/deploy-terrain";
 import "hardhat-contract-sizer";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
@@ -31,6 +32,7 @@ const config: HardhatUserConfig = {
         polygon: process.env.POLYGONSCAN_API,
         polygonMumbai: process.env.POLYGONSCAN_API,
         avalancheFujiTestnet: process.env.SNOWTRACE_API,
+        optimismGoerli: process.env.OPTIMISM_API,
       },
     customChains: [
      {

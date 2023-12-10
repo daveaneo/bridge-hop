@@ -67,6 +67,25 @@ library TransmissionLib {
     }
 
 
+    /**
+     * @notice Decodes the string to determine the transmission type.
+     * @dev Decodes the string using abi.decode. Assumes the first element is the TransmissionType.
+     * @param dataBytes The encoded data.
+     * @return The decoded TransmissionType.
+     */
+    function getTypeFromBytes(bytes memory dataBytes) public pure returns (TransmissionType) {
+        require(dataBytes.length >= 32, "Invalid data length--getType");
+
+        uint256 typeInt;
+        assembly {
+            typeInt := mload(add(dataBytes, 32))
+        }
+
+        return TransmissionType(typeInt);
+
+    }
+
+
 
         // todo -- i changed this to encode from encdoePacked
     function dataToStringSwap(SwapData memory data) public pure returns (string memory) {
@@ -77,7 +96,6 @@ library TransmissionLib {
         return abi.encode(data.transmissionType, data.token,  data.beneficiary, data.nonce, data.inAmount, data.outAmount, data.slippage);
     }
 
-
     function stringToDataSwap(string memory dataStr) public pure returns (SwapData memory) {
         require(bytes(dataStr).length == 224, "Invalid data length--stringTo");
 //        require(bytes(dataStr).length == 224, dataStr);
@@ -87,6 +105,18 @@ library TransmissionLib {
 
         return data;
     }
+
+    function bytesToDataSwap(bytes memory dataBytes) public pure returns (SwapData memory) {
+        require(dataBytes.length == 224, "Invalid data length--stringTo");
+
+        SwapData memory data;
+        (data.transmissionType, data.token, data.beneficiary, data.nonce, data.inAmount, data.outAmount, data.slippage) = abi.decode(dataBytes, (TransmissionType, address, address, uint88, uint120, uint120, uint16));
+
+        return data;
+    }
+
+
+
 
     function dataToStringLiquidityStaging(LiquidityStaging memory data) public pure returns (string memory) {
         return string(abi.encode(data.transmissionType, data.token, data.beneficiary, data.nonce, data.inAmount, data.outAmount));
@@ -106,6 +136,16 @@ library TransmissionLib {
         return data;
     }
 
+    function bytesToDataLiquidityStaging(bytes memory dataBytes) public pure returns (LiquidityStaging memory) {
+        require(dataBytes.length == 192, "Invalid data length--liquidityStaging"); // 32 + 20 bytes for address, 11 bytes for uint88, 15 bytes each for two uint120s
+
+        LiquidityStaging memory data;
+        (data.transmissionType, data.token, data.beneficiary, data.nonce, data.inAmount, data.outAmount) = abi.decode(dataBytes, (TransmissionType, address, address, uint88, uint120, uint120));
+
+        return data;
+    }
+
+
 
     function dataToStringLiquidity(Liquidity memory data) public pure returns (string memory) {
         return string(abi.encode(data.transmissionType, data.token, data.beneficiary, data.nonce, data.mountain, data.lake, data.stagingLake));
@@ -123,6 +163,89 @@ library TransmissionLib {
 
         return data;
     }
+
+    function bytesToDataLiquidity(bytes memory dataBytes) public pure returns (Liquidity memory) {
+        require(dataBytes.length == 224, "Invalid data length--liquidity"); // 32 + 20 bytes for address, 11 bytes for uint88, 15 bytes each for three uint120s
+
+        Liquidity memory data;
+        (data.transmissionType, data.token, data.beneficiary, data.nonce, data.mountain, data.lake, data.stagingLake) = abi.decode(dataBytes, (TransmissionType, address, address, uint88, uint120, uint120, uint120));
+
+        return data;
+    }
+
+
+
+//// get mock data sizes
+
+
+    function getBytesHardcodedSwapData() public view returns (bytes memory){
+        SwapData memory data = SwapData({
+            transmissionType: TransmissionType.SwapData,
+            token: address(0),
+            beneficiary: msg.sender,
+            nonce: 1,
+            inAmount: 2,
+            outAmount: 3,
+            slippage: 4
+        });
+        return abi.encode(data);
+    }
+
+    function getBytesHardcodedLiquidityStaging() public view returns (bytes memory){
+        LiquidityStaging memory data = LiquidityStaging({
+            transmissionType: TransmissionType.LiquidityStaging,
+            token: address(0),
+            beneficiary: msg.sender,
+            nonce: 1,
+            inAmount: 2,
+            outAmount: 3
+        });
+        return abi.encode(data);
+    }
+
+    function getBytesHardcodedLiquidity() public view returns (bytes memory){
+        Liquidity memory data = Liquidity({
+            transmissionType: TransmissionType.Liquidity,
+            token: address(0),
+            beneficiary: msg.sender,
+            nonce: 1,
+            mountain: 2,
+            lake: 3,
+            stagingLake: 4
+        });
+        return abi.encode(data);
+    }
+
+    function getBytesGivenTransmissionType(TransmissionType transmissionType) external view returns (bytes memory){
+        if (transmissionType == TransmissionType.SwapData){
+            return getBytesHardcodedSwapData();
+        }
+        else if (transmissionType == TransmissionType.LiquidityStaging){
+            return getBytesHardcodedLiquidityStaging();
+        }
+       else if (transmissionType == TransmissionType.Liquidity){
+            return getBytesHardcodedLiquidity();
+        }
+       else{
+           revert("unknown TransmissionType");
+       }
+    }
+
+    function getBytesGivenTransmissionTypeNumber(uint256 transmissionType) external view returns (bytes memory){
+        if (transmissionType == 0){
+            return getBytesHardcodedSwapData();
+        }
+        else if (transmissionType == 1){
+            return getBytesHardcodedLiquidityStaging();
+        }
+       else if (transmissionType == 2){
+            return getBytesHardcodedLiquidity();
+        }
+       else{
+           revert("unknown TransmissionType");
+       }
+    }
+
 
 
 //

@@ -1,10 +1,12 @@
 const hre = require("hardhat");
 // npx hardhat run scripts/deployDataMock.js
+const { TransmissionType } = require('../tasks/utils');
 
 const destinationChainSelector = '14767482510784806043';
+const mountainChainSelector = '14767482510784806043';
 
-const useExistingDeployment = true;
-const terrainContractAddress = '0x7B7c7f6620aAe7cec2008D6E1Bc9FF5b51f63Ce4'
+const useExistingDeployment = false;
+const terrainContractAddress = '0x5e11d25F04413B8a3B4De70C1ad2801978996c99'
 
 // CCIP Details
 const sepoliaChainlinkId = '16015286601757825753'
@@ -22,6 +24,7 @@ async function main() {
     const text = "helloWorld"; // Replace with your text message
     const tokenAddress = "0x0000000000000000000000000000000000000000"; // Replace with token address or '0x0000000000000000000000000000000000000000' for native gas
     const router = '0x554472a2720e5e7d5d3c817529aba05eed5f82d8';
+    const amountToStage = '10000';
 
 //    const transmissionLibContract = await hre.artifacts.readArtifact("TransmissionLib");
 //    const transmissionLibAbi = transmissionLibContract.abi;
@@ -32,7 +35,15 @@ async function main() {
       await transmissionLib.deployed();
 
 //    // Deploying the contract
-    const Terrain = await hre.ethers.getContractFactory("Terrain");
+//    const Terrain = await hre.ethers.getContractFactory("Terrain");
+    const Terrain = await hre.ethers.getContractFactory("Terrain", {
+        libraries: {
+            TransmissionLib: transmissionLib.address,
+        },
+    });
+
+
+
 
     let terrain;
     if (useExistingDeployment) {
@@ -46,37 +57,39 @@ async function main() {
         console.log("terrain deployed to:", terrain.address);
     }
 
+    // if mountainInfo not set on Lake, set it.
+    const {blockchainId, contractAddress} = await terrain.mountainInfo();
+    const invalidBlockchainId = 0;
+    const invalidContractAddress = '0x0000000000000000000000000000000000000000';
+    if (blockchainId === invalidBlockchainId || contractAddress === invalidContractAddress) {
+        const tx = await terrain.setMountainInfo(mountainChainSelector, terrain.address); // this is just more of a test as it shouldn't send it here
+        await tx.wait(); // Wait for the transaction to be mined
+    }
+
 
     /// tests
 
-//    // Calling getData() and printing the result
-//    const data = await terrain.getData();
-//    console.log("Data received from getData():", data);
 
-//    // Calling getData() and printing the result
-    const mySwapData = await terrain.mySwapData();
-//    console.log("mySwapData received from mySwapData():", mySwapData);
+    let bytesString;
+    bytesString = await transmissionLib.getBytesGivenTransmissionTypeNumber(1);
 
-
-    // Calling getData() and printing the result
-//    const dataString = await terrain.getText();
-//    console.log("dataString received from getData():", dataString);
-
-    let bytesString = await terrain.getBytes();
-    // temp -- hardcode bytes
-    bytesString = '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002877797fd92d2243491a524f777ee8777a05f950000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004';
-    console.log("bytesString received from getData():", bytesString);
-
-    // Calling getData() and printing the result
-    const fee = await terrain.getFee(destinationChainSelector, receiver, bytesString);
+    let fee;
+    fee = await terrain.getFee(destinationChainSelector, receiver, bytesString);
     console.log("Fee received from getData():", fee);
 
-    // Calling getData() and printing the result
-    const tx = await terrain.sendMessagePayNative(destinationChainSelector, receiver, bytesString, {value: fee});
-    const res = await tx.wait();
 
-    console.log('receipt: ');
-    console.log(res)
+    let tx, res;
+
+    const payment = fee.add(amountToStage);
+    tx = await terrain.stageLiquidity(tokenAddress, amountToStage, {value: payment});
+    res = await tx.wait();
+
+    console.log("Result of sendMessagePayNative:")
+    if(res){
+      console.log("Success!");
+    } else {
+      console.log("FAIL!");
+    }
 
 }
 
