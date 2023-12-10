@@ -1,11 +1,19 @@
 const hre = require("hardhat");
 // npx hardhat run scripts/deployDataMock.js
 
-const destinationChainSelector = '16015286601757825753';
-const useExistingDeployment = false;
+const destinationChainSelector = '14767482510784806043';
 
-const terrainContractAddress = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512'
+const useExistingDeployment = true;
+const terrainContractAddress = '0x7B7c7f6620aAe7cec2008D6E1Bc9FF5b51f63Ce4'
 
+// CCIP Details
+const sepoliaChainlinkId = '16015286601757825753'
+const sepoliaLinkAddress = '0x097D90c9d3E0B50Ca60e1ae45F6A81010f9FB534';
+const sepoliaRouterAddress = '0xd0daae2231e9cb96b94c8512223533293c3693bf'
+
+const avalancheChainlinkId = '14767482510784806043';
+const avalancheLinkAddress = '0xd00ae08403B9bbb9124bB305C09058E32C39A48c';
+const avalancheRouterAddress = '0x554472a2720E5E7D5D3C817529aBA05EEd5F82D8';
 
 
 async function main() {
@@ -26,26 +34,14 @@ async function main() {
 //    // Deploying the contract
     const Terrain = await hre.ethers.getContractFactory("Terrain");
 
-    // Deploy the Mountain contract with the library linked
-//    const Terrain  = await hre.ethers.getContractFactory('dataMock', {
-//        libraries: {
-//            TransmissionLib: transmissionLib.address,
-//        },
-//    });
-////
-//    const dataMock = await Terrain.deploy(receiver, text, tokenAddress, router);
-//
-//    await dataMock.deployed();
-//    console.log("dataMock deployed to:", dataMock.address);
-
-    let dataMock;
+    let terrain;
     if (useExistingDeployment) {
         // Connect to the existing contract
         terrain = Terrain.attach(terrainContractAddress);
         console.log("terrain attached to existing address:", terrain.address);
     } else {
         // Deploy a new contract
-        terrain = await Terrain.deploy(receiver, text, tokenAddress, router);
+        terrain = await Terrain.deploy(sepoliaRouterAddress, sepoliaLinkAddress, 0, sepoliaChainlinkId);
         await terrain.deployed();
         console.log("terrain deployed to:", terrain.address);
     }
@@ -66,7 +62,9 @@ async function main() {
 //    const dataString = await terrain.getText();
 //    console.log("dataString received from getData():", dataString);
 
-    const bytesString = await terrain.getBytes();
+    let bytesString = await terrain.getBytes();
+    // temp -- hardcode bytes
+    bytesString = '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002877797fd92d2243491a524f777ee8777a05f950000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004';
     console.log("bytesString received from getData():", bytesString);
 
     // Calling getData() and printing the result
