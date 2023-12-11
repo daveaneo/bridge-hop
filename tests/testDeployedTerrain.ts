@@ -8,27 +8,21 @@ const hre = require("hardhat");
 const { ethers } = require('ethers');
 const { expect } = require("chai");
 
-
-const ethereumTransmissionLibAddress = '0xdc3C10F4C7Bf188D41Dd1d2A596621bF41efEa71'
-const ethereumContractAddress = '0x10d56dCB0E98cB5C8234c84f317204bf370f0F2C'
-const avalancheTransmissionLibAddress = '0x306B1EB80873054EdB22c3A9e55f87F4F068901f'
-const avalancheContractAddress = '0x4bd4b3F2Aa84Ed342ecf1737cdBBa97bffb3026b'
-
-
-
-// these depend upon deployment address and chains used (see constants.ts)
-// old
-//const ethereumContractAddress = '0x707dE55f7E38eA2c61C553666a0eba7f4cC2f4d5'
-//const avalancheContractAddress = '0x8c5179dfec1C590C59E6607b73cfd0891fa59Bf5'
-//const ethereumTransmissionLibAddress = '0x707dE55f7E38eA2c61C553666a0eba7f4cC2f4d5'
-
-
+// ethereum is mountain
+const mountainTransmissionLibAddress = '0x1B4F65d8c9c172981a00D2a9B6F8CB6fb804981D'
+const mountainContractAddress = '0xf992970d1AfA40a526fed21711841154B028574C'
 const mountainChainSelector = ethers.BigNumber.from('16015286601757825753');
-const lakeChainSelector = ethers.BigNumber.from('14767482510784806043');
+
+// polygon is lake
+const lakeTransmissionLibAddress = '0x868E88f4AaE8B7081Ff9Ac9269389128C09FB9c3'
+const lakeContractAddress = '0xc5B0F4c6244FB88e01C37cDb8881155412891E75'
+const lakeChainSelector = ethers.BigNumber.from('12532609583862916517'); // polygon mumbai
+
+
+// const lakeChainSelector = ethers.BigNumber.from('14767482510784806043'); // avalanche fuji
 //const avalancheRouter = "0x554472a2720e5e7d5d3c817529aba05eed5f82d8";
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
-
 
 const ethereumProvider = new ethers.providers.JsonRpcProvider(process.env.ETHEREUM_SEPOLIA_RPC_URL);
 const polygonProvider = new ethers.providers.JsonRpcProvider(process.env.POLYGON_MUMBAI_RPC_URL);
@@ -37,8 +31,9 @@ const arbitrumProvider = new ethers.providers.JsonRpcProvider(process.env.ARBITR
 const avalancheProvider = new ethers.providers.JsonRpcProvider(process.env.AVALANCHE_FUJI_RPC_URL);
 
 // Create a wallet instance
-const walletEth = new ethers.Wallet(process.env.PRIVATE_KEY, ethereumProvider);
-const walletAvax = new ethers.Wallet(process.env.PRIVATE_KEY, avalancheProvider);
+const walletMountain = new ethers.Wallet(process.env.PRIVATE_KEY, ethereumProvider);
+// const walletLake = new ethers.Wallet(process.env.PRIVATE_KEY, avalancheProvider);
+const walletLake = new ethers.Wallet(process.env.PRIVATE_KEY, polygonProvider);
 
 var mountain, lake, transmissionLibEthereum, transmissionLibAvalanche;
 
@@ -90,13 +85,13 @@ async function initialSetup() {
   const terrainContract = await hre.artifacts.readArtifact("Terrain");
   // Extract the ABI
   const terrainAbi = terrainContract.abi;
-  mountain = new ethers.Contract(ethereumContractAddress, terrainAbi, walletEth);
-  lake = new ethers.Contract(avalancheContractAddress, terrainAbi, walletAvax);
+  mountain = new ethers.Contract(mountainContractAddress, terrainAbi, walletMountain);
+  lake = new ethers.Contract(lakeContractAddress, terrainAbi, walletLake);
 
   const transmissionLibContract = await hre.artifacts.readArtifact("TransmissionLib");
   const transmissionLibAbi = transmissionLibContract.abi;
-  transmissionLibEthereum = new ethers.Contract(ethereumTransmissionLibAddress, transmissionLibAbi, walletEth);
-  transmissionLibAvalanche = new ethers.Contract(avalancheTransmissionLibAddress, transmissionLibAbi, walletAvax);
+  transmissionLibEthereum = new ethers.Contract(mountainTransmissionLibAddress, transmissionLibAbi, walletMountain);
+  transmissionLibAvalanche = new ethers.Contract(lakeTransmissionLibAddress, transmissionLibAbi, walletLake);
 
 
   // if mountainInfo not set on Lake, set it.
@@ -158,13 +153,15 @@ describe("Test Live values on Terrain Contract", function () {
 
       it("Correct Router:", async function () {
           const myRouter = await lake.getRouter();
-          const expectedValue = '0x554472a2720E5E7D5D3C817529aBA05EEd5F82D8';
+//           const expectedValue = '0x554472a2720E5E7D5D3C817529aBA05EEd5F82D8'; // fujiAvalanche
+          const expectedValue = '0x70499c328e1e2a3c41108bd3730f6670a44595d1'; // polygonMumbai
           expect(myRouter).to.equal(expectedValue);
       });
 
       it("Correct Link Token:", async function () {
           const linkToken = await lake.s_linkToken();
-          const expectedAddress = '0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846';
+//           const expectedAddress = '0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846'; // fujiAvalanche
+          const expectedAddress = '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889'; // polygonMumbai
           expect(linkToken).to.equal(expectedAddress);
       });
 
@@ -195,7 +192,7 @@ describe("Test Live values on Terrain Contract", function () {
           bytesString = await transmissionLibAvalanche.getBytesGivenTransmissionTypeNumber(1);
 
           let fee;
-          fee = await lake.getFee(mountainChainSelector, walletEth.address, bytesString);
+          fee = await lake.getFee(mountainChainSelector, walletMountain.address, bytesString);
 //          console.log("Fee received from getData():", fee);
 
 
@@ -206,16 +203,8 @@ describe("Test Live values on Terrain Contract", function () {
 
           let stagedAmount = await lake.liquidityStaging(lakeChainSelector, zeroAddress);
 
-//          await expect(
-//              lake.withdrawStagedLiquidity(lakeChainSelector, zeroAddress, stagedAmount)
-//          ).to.be.revertedWith("Withdrawal not approved or terrain type mismatch");
-
-//           await expect(
-//               lake.withdrawStagedLiquidity(lakeChainSelector, zeroAddress, stagedAmount)
-//           ).to.be.reverted;
-
             await expect(
-                lake.withdrawStagedLiquidity(lakeChainSelector, zeroAddress, stagedAmount, { gasLimit: 10000000 })
+                lake.withdrawStagedLiquidity(lakeChainSelector, zeroAddress, stagedAmount, { gasLimit: 20000000 })
             ).to.be.revertedWith("Withdrawal not approved or terrain type mismatch");
 
 
@@ -227,7 +216,7 @@ describe("Test Live values on Terrain Contract", function () {
         bytesString = await transmissionLibAvalanche.getBytesGivenTransmissionTypeNumber(1);
 
         let fee;
-        fee = await lake.getFee(mountainChainSelector, walletEth.address, bytesString);
+        fee = await lake.getFee(mountainChainSelector, walletMountain.address, bytesString);
         expect(fee).to.not.equal(0, 'fee must be positive');
     });
 });
@@ -269,7 +258,7 @@ describe("Full Bridging Live Test", function () {
           // Additional check for event arguments if necessary
           const event = txReceipt.events?.find((event) => event.event === "LiquidityStaged");
           expect(event?.args?.blockchainId).to.equal(mountainChainSelector, 'blockchainId incorrect');
-          expect(event?.args?.provider).to.equal(walletEth.address, 'providerId incorrect');
+          expect(event?.args?.provider).to.equal(walletMountain.address, 'providerId incorrect');
           expect(event?.args?.token).to.equal(zeroAddress, 'token incorrect');
           expect(event?.args?.amount).to.equal(amountToStage, 'amount incorrect');
         });
@@ -297,7 +286,7 @@ describe("Full Bridging Live Test", function () {
           bytesString = await transmissionLibAvalanche.getBytesGivenTransmissionTypeNumber(1);
 
           let fee;
-          fee = await lake.getFee(mountainChainSelector, walletEth.address, bytesString);
+          fee = await lake.getFee(mountainChainSelector, walletMountain.address, bytesString);
 
           let tx, res;
           const messageValue = fee.add(amountToStage);
@@ -314,7 +303,7 @@ describe("Full Bridging Live Test", function () {
           // Additional check for event arguments if necessary
           const event = txReceiptsStageLiquidity.events?.find((event) => event.event === "LiquidityStaged");
           expect(event?.args?.blockchainId).to.equal(lakeChainSelector, 'blockchainId incorrect');
-          expect(event?.args?.provider).to.equal(walletEth.address, 'providerId incorrect');
+          expect(event?.args?.provider).to.equal(walletMountain.address, 'providerId incorrect');
           expect(event?.args?.token).to.equal(zeroAddress, 'token incorrect');
           expect(event?.args?.amount).to.equal(amountToStage, 'amount incorrect');
         });
@@ -350,8 +339,8 @@ describe("Full Bridging Live Test", function () {
 //     ) external onlyOwner {
       it("Move stagedLiquidity to liquidity", async function () {
           let bytesString = await transmissionLibAvalanche.getBytesGivenTransmissionTypeNumber(2);
-          let fee = await lake.getFee(lakeChainSelector, walletAvax.address, bytesString);
-          let tx = await lake.addLiquidityFromStaged(zeroAddress, lakeChainSelector, 10000, walletEth.address, {value: fee});
+          let fee = await lake.getFee(lakeChainSelector, walletLake.address, bytesString);
+          let tx = await lake.addLiquidityFromStaged(zeroAddress, lakeChainSelector, 10000, walletMountain.address, {value: fee});
           let txRec = await tx.wait();
 
           expect(txRec.events?.some((event) => event.event === "LiquidityStaged")).to.be.true;
@@ -361,8 +350,8 @@ describe("Full Bridging Live Test", function () {
 
       it("Bridge from mountain-side to lake-side", async function () {
           let bytesString = await transmissionLibAvalanche.getBytesGivenTransmissionTypeNumber(0);
-          let fee = await lake.getFee(lakeChainSelector, walletAvax.address, bytesString);
-          let tx = await lake.bridgeNative(lakeChainSelector, 123, lake.address, walletAvax.address, 10000, {value: fee});
+          let fee = await lake.getFee(lakeChainSelector, walletLake.address, bytesString);
+          let tx = await lake.bridgeNative(lakeChainSelector, 123, lake.address, walletLake.address, 10000, {value: fee});
           let txRec = await tx.wait();
 
           // todo: adjust event name

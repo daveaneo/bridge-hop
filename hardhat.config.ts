@@ -57,9 +57,6 @@ const config: HardhatUserConfig = {
       accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
       chainId: 80001
     },
-
-
-
     ethereumSepolia: {
       url: ETHEREUM_SEPOLIA_RPC_URL !== undefined ? ETHEREUM_SEPOLIA_RPC_URL : '',
       accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
